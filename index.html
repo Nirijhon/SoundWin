@@ -1,0 +1,2204 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'">
+<title>Soundboard Live</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎛️</text></svg>" />
+<style>
+:root{
+  --bg-color:#0d1117;
+  --panel-bg:#161b22;
+  --card-bg:#21262d;
+  --bg-deep:#090d12;
+  --accent:#00f2fe;
+  --accent-soft:rgba(0,242,254,.14);
+  --accent-dim:rgba(0,242,254,.45);
+  --text-main:#f0f6fc;
+  --text-sub:#8b949e;
+  --text-faint:#6e7681;
+  --border-color:#30363d;
+  --danger:#f85149;
+  --ok:#3fb950;
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+/* Force the hidden attribute to always win, even over display:grid/flex rules */
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--bg-color);color:var(--text-main);font-family:var(--font);overflow:hidden}
+button{font-family:inherit}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--border-color);border-radius:999px;border:3px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background:#484f58;background-clip:content-box}
+::selection{background:rgba(0,242,254,.3)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---- APP SHELL ---- */
+.app{width:100%;height:100vh;display:grid;grid-template-columns:minmax(0,1.6fr) minmax(340px,1fr);grid-template-rows:auto auto 1fr;position:relative}
+/* LIBRARY COLLAPSE — slide pa-right para ma-maximize ang pads */
+.app.lib-hidden{grid-template-columns:minmax(0,1.6fr) 0}
+.app.lib-hidden .library-section{min-width:0;overflow:hidden;padding-left:0;padding-right:0;border-left:none;opacity:0;pointer-events:none}
+.library-section{transition:opacity .2s ease}
+
+/* ---- HEADER ---- */
+.header{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:14px 22px;background:var(--bg-deep);border-bottom:1px solid var(--border-color);z-index:10}
+.header-dot{width:10px;height:10px;background:var(--accent);border-radius:50%;box-shadow:0 0 10px var(--accent);flex-shrink:0}
+.header-title{font-size:17px;font-weight:700;letter-spacing:1.5px;white-space:nowrap}
+.header-sub{font-size:11px;color:var(--text-sub);font-weight:600;letter-spacing:.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.header-actions{margin-left:auto;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.volume{display:flex;align-items:center;gap:8px}
+.vol-ico{font-size:.85rem;opacity:.75;user-select:none}
+.volume input[type=range]{-webkit-appearance:none;appearance:none;width:96px;height:5px;border-radius:999px;background:var(--border-color);outline:none;cursor:pointer;margin:0}
+.volume input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);border:none;box-shadow:0 0 8px rgba(0,242,254,.5);cursor:pointer;transition:transform .15s}
+.volume input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.15)}
+.volume input[type=range]::-moz-range-track{height:5px;border-radius:999px;background:var(--border-color)}
+.volume input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent);border:none;box-shadow:0 0 8px rgba(0,242,254,.5);cursor:pointer}
+.btn-stop{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:8px;background:transparent;border:1px solid var(--border-color);color:var(--text-main);font-size:.78rem;font-weight:700;cursor:pointer;transition:.18s;white-space:nowrap;flex-shrink:0}
+.btn-stop:hover{border-color:var(--danger);color:#ffcac7;background:rgba(248,81,73,.1)}
+.btn-stop.playing{border-color:var(--danger);color:#ffcac7;animation:stopPulse 1.4s ease-in-out infinite}
+@keyframes stopPulse{0%,100%{box-shadow:0 0 0 0 rgba(248,81,73,.25)}50%{box-shadow:0 0 0 6px rgba(248,81,73,0)}}
+.btn-stop kbd{font-size:.62rem;padding:2px 6px;border-radius:5px;background:rgba(255,255,255,.08);border:1px solid var(--border-color);color:var(--text-sub)}
+.btn-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:8px;background:transparent;border:1px solid var(--border-color);font-size:1rem;line-height:1;color:var(--text-main);cursor:pointer;transition:.18s;flex-shrink:0}
+.btn-icon:hover{border-color:var(--accent);color:var(--accent)}
+.btn-icon.active{background:var(--accent);border-color:var(--accent);color:#001318}
+.btn-icon.locked{background:var(--accent);border-color:var(--accent);color:#001318;box-shadow:0 0 14px rgba(0,242,254,.45)}
+.grid-3x3.locked{opacity:.55;filter:grayscale(.4)}
+.grid-3x3.locked .key-card{pointer-events:none}
+.grid-3x3.locked .key-card:hover{transform:none;border-color:var(--border-color);box-shadow:none}
+.btn-add{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;background:transparent;border:1px solid var(--accent-dim);color:var(--accent);font-size:.78rem;font-weight:700;cursor:pointer;transition:.18s;white-space:nowrap;flex-shrink:0}
+.btn-add:hover{background:var(--accent);color:#001318;box-shadow:0 0 18px rgba(0,242,254,.35)}
+
+/* ---- HINT BAR ---- */
+.hint-bar{grid-column:1/-1;display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:7px 22px;font-size:.74rem;color:var(--text-sub);background:rgba(0,242,254,.04);border-bottom:1px solid var(--border-color)}
+.hint-bar b{color:var(--text-main);font-weight:700}
+.hint-bar .sep{opacity:.4}
+.hint-bar kbd{font-size:.62rem;font-weight:700;padding:1px 6px;border-radius:5px;background:rgba(255,255,255,.07);border:1px solid var(--border-color);color:var(--text-main)}
+/* ---- LINE-UP SECTION (LEFT) ---- */
+.lineup-section{
+  position:relative;isolation:isolate;
+  padding:20px 24px;
+  display:flex;flex-direction:column;min-height:0;overflow:hidden;
+  border:2px solid transparent;border-radius:12px;
+  background:
+    linear-gradient(180deg,#10161f,#0d1117) padding-box,
+    linear-gradient(90deg,#ff2d95,#ff8c00,#ffee00,#00ff9d,#00f2fe,#7b2dff,#ff2d95) border-box;
+  background-size:auto,400% 100%;
+  animation:neonBorder 9s linear infinite,neonGlow 9s linear infinite;
+}
+.lineup-section::before{
+  content:'';position:absolute;inset:2px;z-index:-1;pointer-events:none;
+  border-radius:10px;
+  background:
+    radial-gradient(600px 300px at 20% 0%,rgba(255,45,149,.16),transparent 60%),
+    radial-gradient(600px 300px at 80% 100%,rgba(0,242,254,.14),transparent 60%),
+    radial-gradient(500px 260px at 50% 50%,rgba(123,45,255,.12),transparent 60%);
+  background-size:200% 200%,200% 200%,200% 200%;
+  animation:neonAmbient 9s ease-in-out infinite;
+}
+@keyframes neonBorder{
+  0%{background-position:0 0,0% 50%}
+  100%{background-position:0 0,400% 50%}
+}
+@keyframes neonAmbient{
+  0%{background-position:0% 0%,100% 100%,50% 50%}
+  50%{background-position:100% 100%,0% 0%,0% 0%}
+  100%{background-position:0% 0%,100% 100%,50% 50%}
+}
+@keyframes neonGlow{
+  0%,100%{box-shadow:0 0 24px -8px rgba(255,45,149,.55),0 0 46px -18px rgba(255,45,149,.4)}
+  20%{box-shadow:0 0 24px -8px rgba(255,140,0,.55),0 0 46px -18px rgba(255,200,0,.4)}
+  40%{box-shadow:0 0 24px -8px rgba(255,238,0,.5),0 0 46px -18px rgba(0,255,157,.4)}
+  60%{box-shadow:0 0 24px -8px rgba(0,255,157,.55),0 0 46px -18px rgba(0,242,254,.4)}
+  80%{box-shadow:0 0 24px -8px rgba(123,45,255,.55),0 0 46px -18px rgba(255,45,149,.4)}
+}
+.section-title{font-size:11px;color:var(--text-sub);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;white-space:nowrap}
+.section-title .pill{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 6px;margin-left:6px;border-radius:999px;background:var(--accent-soft);color:var(--accent);border:1px solid var(--accent-dim);font-size:.64rem;letter-spacing:0;vertical-align:1px}
+.section-head-row{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-shrink:0}
+.now-playing{display:flex;align-items:center;gap:8px;font-size:.76rem;font-weight:600;color:var(--accent);max-width:45%;overflow:hidden;white-space:nowrap}
+.now-playing[hidden]{display:none}
+.now-playing .eq{display:inline-flex;gap:2px;align-items:flex-end;height:12px;flex-shrink:0}
+.now-playing .eq i{width:3px;background:var(--accent);border-radius:2px;animation:eqBars .8s ease-in-out infinite}
+.now-playing .eq i:nth-child(2){animation-delay:.15s}
+.now-playing .eq i:nth-child(3){animation-delay:.3s}
+@keyframes eqBars{0%,100%{height:4px}50%{height:12px}}
+.btn-clear{margin-left:auto;background:transparent;border:1px solid var(--border-color);color:var(--text-sub);font-size:.72rem;font-weight:600;padding:6px 12px;border-radius:7px;cursor:pointer;white-space:nowrap;transition:.16s;flex-shrink:0}
+.btn-clear:hover{border-color:var(--danger);color:#ffcac7;background:rgba(248,81,73,.08)}
+
+.grid-3x3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-content:start;overflow-y:auto;padding:2px 2px 10px;flex:1;min-height:0}
+.key-card{position:relative;background:linear-gradient(180deg,#2a313a 0%,#232930 55%,#1b2128 100%);border:1px solid #3a424c;border-radius:10px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;gap:10px;height:118px;cursor:pointer;min-width:0;transform:translateY(0);transition:transform .09s ease-out,box-shadow .09s ease-out,border-color .18s,filter .18s;box-shadow:0 5px 0 #0e1319,0 9px 18px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08)}
+.key-card:hover{border-color:#4a545f;transform:translateY(-2px);box-shadow:0 7px 0 #0e1319,0 13px 22px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.1);filter:brightness(1.08)}
+.key-card:active{transform:translateY(4px);box-shadow:0 1px 0 #0e1319,0 3px 8px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.04);filter:brightness(.95)}
+.key-card.playing{border-color:var(--accent);background:linear-gradient(180deg,#134349 0%,#0e343c 55%,#0a272e 100%);transform:translateY(2px);filter:none;box-shadow:0 3px 0 #06181d,0 8px 22px rgba(0,242,254,.35),inset 0 0 20px rgba(0,242,254,.14)}
+.key-number{width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-weight:800;font-size:12px;background:linear-gradient(180deg,#3d4550,#262d35);color:#fff;flex-shrink:0;transition:.2s;box-shadow:0 2px 0 rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.14)}
+.key-card.playing .key-number{background:linear-gradient(180deg,#00f2fe,#00b9c6);color:#001318;transform:translateY(1px);box-shadow:0 0 12px rgba(0,242,254,.75),inset 0 1px 0 rgba(255,255,255,.45)}
+.key-card .rm{position:absolute;top:10px;right:10px;width:26px;height:26px;display:grid;place-items:center;background:linear-gradient(180deg,#3d4550,#262d35);border:1px solid #454e59;border-radius:8px;color:#9aa4b0;font-size:.82rem;font-weight:700;line-height:1;cursor:pointer;padding:0;transition:.15s;z-index:2;box-shadow:0 2px 0 rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.14)}
+.key-card .rm:hover{background:linear-gradient(180deg,#f85149,#c93c35);border-color:#ff6b63;color:#fff;box-shadow:0 0 14px rgba(248,81,73,.55),0 2px 0 rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.25)}
+.key-card .rm:active{transform:translateY(2px);box-shadow:0 0 8px rgba(248,81,73,.4),inset 0 1px 0 rgba(255,255,255,.15)}
+.sound-name{font-weight:700;font-size:12.5px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.wave-bars{display:flex;align-items:flex-end;gap:3px;height:15px}
+.wave-bars .bar{width:3px;background:#3d444d;border-radius:2px;transform-origin:bottom;transition:background .2s}
+.key-card.playing .bar{background:var(--accent);animation:barDance .6s ease-in-out infinite alternate}
+.key-card.playing .bar:nth-child(2){animation-delay:.12s}
+.key-card.playing .bar:nth-child(3){animation-delay:.24s}
+.key-card.playing .bar:nth-child(4){animation-delay:.36s}
+@keyframes barDance{from{transform:scaleY(.4)}to{transform:scaleY(1.3)}}
+.key-card.empty{border-style:dashed;opacity:.55;cursor:default;background:rgba(33,38,45,.35);box-shadow:none;border-color:var(--border-color)}
+/* RGB RUNNING LIGHTS sa empty pads — rainbow chase across the row */
+.key-card.empty{opacity:.8;animation:emptyPadRgb 6s linear infinite}
+.grid-3x3 .key-card.empty:nth-child(2){animation-delay:-.66s}
+.grid-3x3 .key-card.empty:nth-child(3){animation-delay:-1.33s}
+.grid-3x3 .key-card.empty:nth-child(4){animation-delay:-2s}
+.grid-3x3 .key-card.empty:nth-child(5){animation-delay:-2.66s}
+.grid-3x3 .key-card.empty:nth-child(6){animation-delay:-3.33s}
+.grid-3x3 .key-card.empty:nth-child(7){animation-delay:-4s}
+.grid-3x3 .key-card.empty:nth-child(8){animation-delay:-4.66s}
+.grid-3x3 .key-card.empty:nth-child(9){animation-delay:-5.33s}
+@keyframes emptyPadRgb{
+  0%,100%{border-color:rgba(255,45,149,.6);box-shadow:0 0 12px -4px rgba(255,45,149,.4),inset 0 0 14px -6px rgba(255,45,149,.3)}
+  20%{border-color:rgba(255,140,0,.6);box-shadow:0 0 12px -4px rgba(255,140,0,.4),inset 0 0 14px -6px rgba(255,140,0,.3)}
+  40%{border-color:rgba(0,255,157,.6);box-shadow:0 0 12px -4px rgba(0,255,157,.4),inset 0 0 14px -6px rgba(0,255,157,.3)}
+  60%{border-color:rgba(0,242,254,.6);box-shadow:0 0 12px -4px rgba(0,242,254,.4),inset 0 0 14px -6px rgba(0,242,254,.3)}
+  80%{border-color:rgba(123,45,255,.6);box-shadow:0 0 12px -4px rgba(123,45,255,.4),inset 0 0 14px -6px rgba(123,45,255,.3)}
+}
+/* RGB OFF — balik sa plain dark, walang animations */
+.app.rgb-off .lineup-section{animation:none;background:linear-gradient(180deg,#10161f,#0d1117) padding-box,linear-gradient(90deg,var(--border-color)) border-box;box-shadow:none}
+.app.rgb-off .lineup-section::before{animation:none;opacity:0}
+.app.rgb-off .key-card.empty{animation:none;opacity:.55;border-color:var(--border-color);box-shadow:none}
+.key-card.empty:hover{transform:none;border-color:var(--border-color);filter:none;box-shadow:none}
+.key-card.empty .key-number{background:transparent;border:1px dashed var(--border-color);color:var(--text-faint)}
+.key-card.empty.drag-over{opacity:1;border-style:solid;border-color:var(--accent);background:linear-gradient(180deg,#134349,#0a272e);box-shadow:0 0 0 2px var(--accent-soft),0 0 15px rgba(0,242,254,.25),0 5px 0 #06181d;transform:translateY(-2px)}
+.key-card.dragging{opacity:.45;border-style:dashed}
+.key-card.drag-over{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft),0 0 18px rgba(0,242,254,.3),0 7px 0 #0e1319;transform:translateY(-2px) scale(1.02)}
+.key-card{-webkit-user-select:none;user-select:none}
+.empty-slot-name{font-size:11px;color:var(--text-faint);font-weight:600}
+/* ---- LIBRARY SECTION (RIGHT) ---- */
+.library-section{padding:20px 22px;background:#12171f;display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
+.library-title{margin-bottom:14px}
+.library-title #libStorage{color:var(--text-faint);font-weight:600;margin-left:8px;font-size:.62rem;letter-spacing:.05em}
+.search-box{width:100%;padding:10px 12px;background:var(--card-bg);border:1px solid var(--border-color);border-radius:6px;color:#fff;font-size:.85rem;font-family:inherit;margin-bottom:14px;outline:none;transition:border-color .18s,box-shadow .18s;flex-shrink:0}
+.search-box::placeholder{color:var(--text-faint)}
+.search-box:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+/* ---- LIBRARY CATEGORY TAGS ---- */
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;flex-shrink:0}
+.tag{position:relative;font-size:10.5px;padding:4px 9px;background:var(--card-bg);border-radius:12px;color:var(--text-sub);border:1px solid var(--border-color);cursor:pointer;font-weight:600;transition:.15s;white-space:nowrap}
+.tag.has-rm{padding-right:20px}
+.tag-rm{position:absolute;top:50%;right:3px;transform:translateY(-50%);width:14px;height:14px;border-radius:50%;display:grid;place-items:center;font-size:.6rem;line-height:1;color:var(--text-faint);background:rgba(255,255,255,.06);border:1px solid transparent;cursor:pointer;transition:.15s}
+.tag.has-rm:hover .tag-rm{color:#ffcac7;border-color:var(--danger)}
+.tag.has-rm .tag-rm:hover{background:var(--danger);color:#fff;box-shadow:0 0 8px rgba(248,81,73,.5)}
+.tag:hover{color:var(--text-main);border-color:#3d444d}
+.tag.active{background:var(--accent);color:#001318;border-color:var(--accent);font-weight:700}
+.tag .tag-count{opacity:.7;margin-left:3px}
+/* ---- CATEGORY COLORS (data from CATEGORIES[].color) ---- */
+[data-color=amber]{--cat:#e3b341}
+[data-color=pink]{--cat:#f778ba}
+[data-color=cyan]{--cat:#00f2fe}
+[data-color=red]{--cat:#f85149}
+[data-color=violet]{--cat:#a371f7}
+[data-color=green]{--cat:#3fb950}
+.section[data-color] .section-head h2{color:var(--cat)}
+.section[data-color] .section-head .rule{background:linear-gradient(90deg,var(--cat),transparent);opacity:.45}
+.tag[data-color]:not([data-target=all])::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--cat);margin-right:6px;vertical-align:1px}
+.tag[data-color]:not([data-target=all]):hover{border-color:var(--cat)}
+.tag[data-color].active{background:var(--cat);border-color:var(--cat);color:#0d1117}
+/* ---- LIBRARY COLLAPSE HANDLE (sa border) ---- */
+.lib-handle{
+  position:absolute;
+  left:0;top:50%;
+  transform:translate(-50%,-50%);
+  z-index:30;
+  width:32px;height:64px;
+  border-radius:10px;
+  background:linear-gradient(180deg,#1b2128,#10151c);
+  border:2px solid #4a545f;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:box-shadow .18s,transform .18s,border-color .18s;
+  box-shadow:0 3px 10px rgba(0,0,0,.6),0 0 14px rgba(0,242,254,.35),inset 0 1px 0 rgba(255,255,255,.08);
+  animation:handlePulse 2.4s ease-in-out infinite;
+}
+.lib-handle:hover{border-color:var(--accent);box-shadow:0 0 20px rgba(0,242,254,.65),0 3px 10px rgba(0,0,0,.6),inset 0 0 14px rgba(0,242,254,.3);animation:none;transform:translate(-50%,-50%) scale(1.12)}
+.handle-arrow{width:26px;height:26px;display:block;overflow:visible;transition:transform .25s;filter:drop-shadow(0 0 5px rgba(0,242,254,.7))}
+.handle-chevron{transition:transform .25s}
+.lib-hidden .handle-arrow{transform:rotate(180deg)}
+@keyframes handlePulse{
+  0%,100%{box-shadow:0 3px 10px rgba(0,0,0,.6),0 0 14px rgba(0,242,254,.35),inset 0 1px 0 rgba(255,255,255,.08)}
+  50%{box-shadow:0 3px 10px rgba(0,0,0,.6),0 0 26px rgba(0,242,254,.6),inset 0 1px 0 rgba(255,255,255,.15)}
+}
+/* ---- RGB ON/OFF BUTTON ---- */
+.btn-rgb{display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:8px;font-size:.78rem;font-weight:700;cursor:pointer;transition:.18s;white-space:nowrap;border:1px solid transparent}
+.btn-rgb.on{background:linear-gradient(90deg,rgba(255,45,149,.22),rgba(255,200,0,.22),rgba(0,255,157,.22),rgba(0,242,254,.22),rgba(123,45,255,.22)) border-box;background-size:200% 100%;color:#fff;border-color:transparent;animation:rgbBtnShine 3s linear infinite}
+.btn-rgb.on:hover{box-shadow:0 0 14px rgba(0,242,254,.4)}
+.btn-rgb.off{background:var(--card-bg);color:var(--text-faint);border-color:var(--border-color)}
+@keyframes rgbBtnShine{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+/* ---- SEARCH WRAP + CLEAR BUTTON ---- */
+.search-wrap{position:relative;margin-bottom:14px;flex-shrink:0}
+.search-wrap .search-box{margin-bottom:0;padding-right:34px}
+.search-clear{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:22px;height:22px;border-radius:6px;display:grid;place-items:center;background:transparent;border:none;color:var(--text-faint);font-size:.75rem;cursor:pointer;transition:.15s;padding:0}
+.search-clear:hover{color:var(--text-main);background:rgba(255,255,255,.08)}
+.search-clear[hidden]{display:none}
+#mainContent{flex:1;min-height:0;overflow-y:auto;padding:2px;scrollbar-width:thin}
+.section{margin-bottom:20px}
+.section-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;position:sticky;top:0;background:#12171f;padding:4px 0;z-index:2}
+.section-head h2{font-size:.82rem;font-weight:700;white-space:nowrap;letter-spacing:.02em}
+.section-head .count{font-size:.62rem;font-weight:700;color:var(--text-faint);background:var(--card-bg);border:1px solid var(--border-color);padding:2px 8px;border-radius:999px;white-space:nowrap}
+.section-head .rule{flex:1;height:1px;background:var(--border-color);min-width:10px}
+.list-col{display:flex;flex-direction:column;gap:8px}
+.list-item{background:var(--card-bg);border:1px solid var(--border-color);padding:9px 12px;border-radius:6px;display:flex;justify-content:space-between;align-items:center;font-size:12px;cursor:pointer;transition:border-color .15s,transform .12s;gap:8px;min-width:0}
+.list-item:hover{border-color:var(--accent-dim)}
+.list-item:active{transform:scale(.985)}
+.list-item.playing{border-color:var(--accent);box-shadow:0 0 12px rgba(0,242,254,.2)}
+.list-item.custom{border-style:dashed}
+.item-left{display:flex;align-items:center;gap:9px;min-width:0;flex:1}
+.play-icon{color:var(--accent);font-size:11px;flex-shrink:0}
+.item-ico{flex-shrink:0}
+.item-name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.duration{color:var(--text-sub);font-size:10px;font-variant-numeric:tabular-nums}
+.lib-key-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;background:var(--accent-soft);border:1px solid var(--accent-dim);color:var(--accent);letter-spacing:.5px;font-variant-numeric:tabular-nums;flex-shrink:0;line-height:1.4}
+.lib-key-badge[hidden]{display:none}
+.list-item .add-btn{width:38px;height:38px;border-radius:8px;display:grid;place-items:center;font-size:1.4rem;font-weight:700;line-height:1;background:var(--accent-soft);border:1px solid var(--accent-dim);color:var(--accent);cursor:pointer;transition:.15s;padding:0;flex-shrink:0}
+.list-item .add-btn:hover{background:var(--accent);border-color:var(--accent);color:#001318;box-shadow:0 0 12px rgba(0,242,254,.45);transform:scale(1.08)}
+.list-item .add-btn:active{transform:scale(.94)}
+.pad-rm{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:.72rem;line-height:1;background:transparent;border:1px solid var(--border-color);color:#ffcac7;cursor:pointer;transition:.15s;padding:0}
+.pad-rm:hover{background:var(--danger);border-color:var(--danger);color:#fff}
+.empty-hint{color:var(--text-faint);font-size:.78rem;font-weight:500;padding:4px 2px}
+.no-results{padding:30px 10px;text-align:center;color:var(--text-sub);font-size:.85rem}
+.no-results[hidden]{display:none}
+.no-results span{font-size:1.8rem;display:block;margin-bottom:8px}
+
+/* ---- TOAST / SHORTCUTS ---- */
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--card-bg);border:1px solid var(--accent-dim);color:var(--text-main);padding:10px 18px;border-radius:10px;font-size:.82rem;font-weight:600;box-shadow:0 14px 34px -12px rgba(0,0,0,.8),0 0 18px rgba(0,242,254,.12);opacity:0;pointer-events:none;transition:.22s;z-index:200;max-width:min(480px,90vw);text-align:center}
+#toast.visible{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.success{border-color:#3fb950;box-shadow:0 14px 34px -12px rgba(0,0,0,.8),0 0 18px rgba(63,185,80,.28)}
+#toast.error{border-color:var(--danger);box-shadow:0 14px 34px -12px rgba(0,0,0,.8),0 0 18px rgba(248,81,73,.32)}
+.shortcuts{position:fixed;top:72px;right:18px;z-index:90;background:var(--panel-bg);border:1px solid var(--border-color);border-radius:10px;padding:14px 16px;box-shadow:0 20px 50px -18px rgba(0,0,0,.9);opacity:0;transform:translateY(-6px) scale(.98);pointer-events:none;transition:.2s}
+.shortcuts.open{opacity:1;transform:none;pointer-events:auto}
+.shortcuts h3{font-size:.84rem;font-weight:700;margin-bottom:8px;color:var(--accent)}
+.shortcuts ul{list-style:none}
+.shortcuts li{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:5px 0;font-size:.78rem;color:var(--text-sub);font-weight:500}
+.shortcuts kbd{font-size:.64rem;font-weight:700;padding:2px 7px;border-radius:5px;background:rgba(255,255,255,.07);border:1px solid var(--border-color);color:var(--text-main);white-space:nowrap}
+/* ---- MODALS ---- */
+.modal-overlay{position:fixed;inset:0;z-index:120;display:grid;place-items:center;padding:20px;background:rgba(1,4,9,.7);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay[hidden]{display:none}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal{width:min(440px,100%);background:var(--panel-bg);border:1px solid var(--border-color);border-radius:12px;padding:20px;box-shadow:0 30px 70px -20px rgba(0,0,0,.9);transform:translateY(10px) scale(.98);transition:transform .2s}
+.modal-overlay.open .modal{transform:none}
+.modal h3{font-size:.95rem;font-weight:700;margin-bottom:4px;color:var(--accent)}
+.modal-sub{font-size:.78rem;color:var(--text-sub);font-weight:500;line-height:1.5;margin-bottom:14px}
+.modal-sound{display:flex;align-items:center;gap:10px;background:var(--card-bg);border:1px solid var(--border-color);border-radius:10px;padding:9px 12px;margin-bottom:14px}
+.modal-sound .modal-ico{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;font-size:1.05rem;background:var(--accent-soft);flex-shrink:0}
+.modal-sound .modal-ttl{font-size:.84rem;font-weight:700;line-height:1.3;word-break:break-all}
+.modal-sound .modal-hint{font-size:.68rem;color:var(--text-faint);font-weight:600}
+.fld-label{display:block;font-size:.66rem;font-weight:700;color:var(--text-sub);letter-spacing:.08em;text-transform:uppercase;margin:0 0 6px}
+.fld-input{width:100%;box-sizing:border-box;background:var(--bg-deep);border:1px solid var(--border-color);color:var(--text-main);padding:9px 13px;border-radius:8px;font-size:.85rem;font-weight:600;font-family:inherit;outline:none;margin-bottom:14px}
+.fld-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.cat-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;max-height:190px;overflow-y:auto}
+.cat-btn{padding:8px 13px;border-radius:999px;background:var(--card-bg);border:1px solid var(--border-color);color:var(--text-main);font-size:.78rem;font-weight:600;cursor:pointer;transition:.15s}
+.cat-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.cat-btn.new{border-style:dashed;color:var(--accent)}
+.new-cat-row{display:flex;gap:8px;margin-bottom:14px}
+.new-cat-row[hidden]{display:none}
+.new-cat-row input{flex:1;background:var(--bg-deep);border:1px solid var(--border-color);color:var(--text-main);padding:9px 13px;border-radius:8px;font-size:.82rem;font-family:inherit;outline:none}
+.new-cat-row input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.new-cat-row button{padding:9px 16px;border-radius:8px;background:var(--accent);border:none;color:#001318;font-weight:700;font-size:.8rem;cursor:pointer;transition:.15s}
+.new-cat-row button:hover{box-shadow:0 0 14px rgba(0,242,254,.4)}
+.key-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(38px,1fr));gap:6px;margin-bottom:16px}
+.grid-sep{grid-column:1/-1;height:6px}
+.key-btn{height:40px;border-radius:8px;padding:0;font-size:.82rem;font-weight:700;color:var(--text-main);background:var(--card-bg);border:1px solid var(--border-color);cursor:pointer;transition:.15s}
+.key-btn:hover{background:var(--accent);border-color:var(--accent);color:#001318;transform:translateY(-2px)}
+.key-btn:active{transform:scale(.95)}
+.key-btn.used{opacity:.35;cursor:not-allowed;color:var(--text-faint);background:var(--card-bg)}
+.key-btn.used:hover{transform:none;background:var(--card-bg);border-color:var(--border-color);color:var(--text-faint)}
+.key-btn.available{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.modal-actions{display:flex;justify-content:flex-end}
+.modal-cancel{background:transparent;border:1px solid var(--border-color);color:var(--text-sub);font-size:.76rem;font-weight:600;padding:8px 16px;border-radius:8px;cursor:pointer;transition:.16s}
+.modal-cancel:hover{border-color:var(--danger);color:#ffcac7;background:rgba(248,81,73,.08)}
+.modal-cancel kbd{font-size:.6rem;font-weight:700;padding:1px 5px;border-radius:5px;background:rgba(255,255,255,.08);border:1px solid var(--border-color);color:var(--text-sub);margin-left:6px}
+.modal-primary{background:var(--accent);border:1px solid var(--accent);color:#001318;font-size:.76rem;font-weight:700;padding:8px 16px;border-radius:8px;cursor:pointer;transition:.16s;margin-left:8px;display:inline-flex;align-items:center}
+.modal-primary:hover{box-shadow:0 0 14px rgba(0,242,254,.4);transform:translateY(-1px)}
+.modal-primary:active{transform:scale(.96)}
+.modal-primary kbd{font-size:.6rem;font-weight:700;padding:1px 5px;border-radius:5px;background:rgba(0,19,24,.25);border:1px solid rgba(0,19,24,.35);color:#001318;margin-left:6px}
+.modal-danger{background:var(--danger);border:1px solid var(--danger);color:#fff;font-size:.76rem;font-weight:700;padding:8px 16px;border-radius:8px;cursor:pointer;transition:.16s;margin-left:8px;display:inline-flex;align-items:center}
+.modal-danger:hover{box-shadow:0 0 14px rgba(248,81,73,.45);transform:translateY(-1px)}
+.modal-danger:active{transform:scale(.96)}
+.modal-danger kbd{font-size:.6rem;font-weight:700;padding:1px 5px;border-radius:5px;background:rgba(0,0,0,.25);border:1px solid rgba(0,0,0,.35);color:#fff;margin-left:6px}
+h3.danger-title{color:var(--danger)}
+.modal-sound.danger .modal-ico{background:rgba(248,81,73,.15)}
+/* Key-flash feedback: glow follows whichever key you press */
+.flash-del{outline:2px solid var(--danger)!important;outline-offset:2px;box-shadow:0 0 18px rgba(248,81,73,.65)!important}
+.flash-cancel{outline:2px solid var(--accent)!important;outline-offset:2px;box-shadow:0 0 18px rgba(0,242,254,.6)!important}
+/* Only the PRESSED key's button glows — kill the persistent focus outline inside this modal */
+#eventDeleteModal :focus-visible{outline:none!important}
+#eventDeleteModal button:focus{outline:none!important}
+#soundDeleteModal :focus-visible{outline:none!important}
+#soundDeleteModal button:focus{outline:none!important}
+#catDeleteModal :focus-visible{outline:none!important}
+#catDeleteModal button:focus{outline:none!important}
+
+@media (max-width:900px){
+  body{overflow:auto}
+  .app{grid-template-columns:1fr;grid-template-rows:auto auto auto auto;height:auto;min-height:100vh}
+  .header{flex-wrap:wrap;gap:10px;padding:12px 14px}
+  .header-actions{flex-wrap:wrap;margin-left:0}
+  .hint-bar{padding:7px 14px}
+  .lineup-section{padding:16px 14px}
+  .grid-3x3{overflow:visible}
+  .library-section{padding:16px 14px}
+  #mainContent{overflow:visible}
+  .now-playing{display:none}
+  .volume input[type=range]{width:70px}
+}
+/* ---- EVENT PAD SETS ---- */
+.event-bar{display:flex;align-items:center;gap:8px;margin:12px 0;flex-wrap:wrap}
+.event-select{
+  flex:1;min-width:0;
+  -webkit-appearance:none;appearance:none;
+  background:var(--card-bg) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='13' height='9' viewBox='0 0 13 9'><path d='M1.5 1.5l5 5 5-5' fill='none' stroke='%2300f2fe' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 14px center;
+  border:1px solid var(--accent-dim);
+  border-radius:9px;
+  padding:11px 38px 11px 13px;
+  font-size:1.05rem;
+  font-weight:800;
+  letter-spacing:.2px;
+  color:var(--text-main);
+  cursor:pointer;
+  outline:none;
+  transition:border-color .18s,box-shadow .18s,background-color .18s;
+  text-overflow:ellipsis;
+}
+.event-select:hover{border-color:var(--accent);background-color:#1a212b;box-shadow:0 0 16px rgba(0,242,254,.22)}
+.event-select:focus-visible{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.event-select option{background:var(--panel-bg);color:var(--text-main);font-weight:600;font-size:.92rem}
+.btn-add-event{display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:8px;background:var(--accent-soft);border:1px solid var(--accent-dim);color:var(--accent);font-size:.78rem;font-weight:700;cursor:pointer;transition:.18s;white-space:nowrap}
+.btn-add-event:hover{background:var(--accent);color:#001318;box-shadow:0 0 12px rgba(0,242,254,.35)}
+.btn-ev-ico{width:33px;height:33px;border-radius:8px;display:grid;place-items:center;background:transparent;border:1px solid var(--border-color);color:var(--text-sub);cursor:pointer;font-size:.85rem;transition:.15s;padding:0}
+.btn-ev-ico:hover{color:var(--text-main);border-color:var(--accent-dim)}
+.btn-ev-ico.danger:hover{background:rgba(248,81,73,.1);border-color:var(--danger);color:#ffcac7}
+.event-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:48px 16px;text-align:center;border:1px dashed var(--border-color);border-radius:10px;color:var(--text-sub);font-size:.85rem;font-weight:500;line-height:1.6}
+.event-empty[hidden]{display:none}
+.event-empty-ico{font-size:2rem;opacity:.85}
+.event-empty b{color:var(--text-main)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <div class="header-dot" aria-hidden="true"></div>
+    <span class="header-title">SOUNDBOARD LIVE</span>
+    <span class="header-sub" id="brandSub"></span>
+    <div class="header-actions">
+      <div class="volume" role="group" aria-label="Master volume">
+        <span class="vol-ico" aria-hidden="true">🔊</span>
+        <input type="range" id="volume" min="0" max="1" step="0.05" value="1" aria-label="Master volume" title="Master volume" />
+      </div>
+      <button type="button" class="btn-add" id="addSoundBtn" title="Add your own MP3">➕ Add Sound</button>
+      <button type="button" class="btn-rgb on" id="rgbToggleBtn" aria-pressed="true" title="RGB neon lights ON">🌈 RGB</button>
+      <button type="button" class="btn-icon" id="lockBtn" aria-pressed="false" aria-label="Lock pads" title="Lock pads (proteksyon laban sa accidental play)">🔓</button>
+      <button type="button" class="btn-icon" id="shortcutBtn" aria-label="Keyboard shortcuts" aria-expanded="false" title="Keyboard shortcuts">⌨</button>
+      <button type="button" class="btn-stop" id="stopBtn">⏹ Stop All <kbd>SPACE</kbd></button>
+    </div>
+  </header>
+
+  <div class="hint-bar" id="hintBar" aria-label="Tips">
+    <span aria-hidden="true">💡</span><b>Tap a sound to play</b><span class="sep">·</span><kbd>+</kbd><span>queues it to the active event</span><span class="sep">·</span><b>Drag pads</b><span>to swap keys</span><span class="sep">·</span><kbd>SPACE</kbd><span>stops everything</span><span class="sep">·</span><b>➕ Add Event</b><span>= bagong batch ng pads</span>
+  </div>
+
+  <section class="lineup-section" aria-label="Active Line-Up">
+    <div class="section-head-row">
+      <div class="section-title">Pads <span class="pill" id="lineupCount">0</span></div>
+      <div class="now-playing" id="nowPlaying" hidden></div>
+      <button type="button" class="btn-clear" id="clearBtn">Clear</button>
+    </div>
+    <div class="event-bar">
+      <select id="eventSelect" class="event-select" aria-label="Choose which event pad set to use" title="Pumili kung aling event na set ng pads ang gagamitin"></select>
+      <button type="button" class="btn-add-event" id="addEventBtn" title="Gumawa ng bagong event (bagong batch ng pads)">➕ Add Event</button>
+      <button type="button" class="btn-ev-ico" id="eventRenameBtn" title="Rename this event" aria-label="Rename this event">✎</button>
+      <button type="button" class="btn-ev-ico danger" id="eventDeleteBtn" title="Delete this event" aria-label="Delete this event">🗑</button>
+    </div>
+    <div class="event-empty" id="eventEmpty">
+      <div class="event-empty-ico" aria-hidden="true">🎛️</div>
+      <div class="event-empty-txt"><b>Wala pang event.</b><br>Pindutin ang <b>➕ Add Event</b> para gumawa ng batch ng pads<br>para sa susunod mong event.</div>
+    </div>
+    <div class="grid-3x3" id="lineupContainer"></div>
+  </section>
+
+  <aside class="library-section" aria-label="Sound Library">
+    <div class="section-title library-title">Sound Library<span id="libStorage"></span></div>
+    <div class="search-wrap">
+      <input type="text" class="search-box" id="searchInput" placeholder="🔍 Search sound effects...  ( / )" autocomplete="off" spellcheck="false" />
+      <button type="button" class="search-clear" id="searchClear" aria-label="Clear search" title="Clear search" hidden>✕</button>
+    </div>
+    <div class="tags" id="tabs" role="tablist" aria-label="Categories"></div>
+    <div id="mainContent">
+      <div id="sectionsWrap"></div>
+      <div class="no-results" id="noResults" hidden></div>
+    </div>
+  </aside>
+  <button type="button" class="lib-handle" id="libHandleBtn" aria-pressed="false" aria-label="Hide Sound Library" title="Itago ang Sound Library (slide pa-right)">
+    <svg class="handle-arrow" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="handleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#00f2fe"/>
+          <stop offset="100%" stop-color="#7b2dff"/>
+        </linearGradient>
+      </defs>
+      <path class="handle-chevron" d="M9 6l6 6-6 6" stroke="url(#handleGrad)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
+</div>
+
+<input type="file" id="soundFileInput" accept="audio/mpeg,.mp3,audio/*" hidden />
+
+<div class="shortcuts" id="shortcutPanel" aria-hidden="true">
+  <h3>⌨️ Keyboard shortcuts</h3>
+  <ul>
+    <li><span>Stop all sounds</span><kbd>SPACE</kbd></li>
+    <li><span>Play focused sound</span><kbd>ENTER</kbd></li>
+    <li><span>Play queued slot</span><kbd>1–9 A–Z</kbd></li>
+    <li><span>Queue a sound</span><kbd>+</kbd></li>
+    <li><span>Close this panel</span><kbd>ESC</kbd></li>
+  </ul>
+</div>
+
+<div class="modal-overlay" id="addSoundModal" role="dialog" aria-modal="true" aria-labelledby="addSoundTitle" hidden>
+  <div class="modal">
+    <h3 id="addSoundTitle">➕ Add Sound</h3>
+    <div class="modal-sound">
+      <span class="modal-ico" id="addSoundIco" aria-hidden="true">🔊</span>
+      <div>
+        <div class="modal-ttl" id="addSoundFile">—</div>
+        <div class="modal-hint" id="addSoundSize">Sound</div>
+      </div>
+    </div>
+    <label class="fld-label" for="addSoundNameInput">Name ng sound</label>
+    <input type="text" id="addSoundNameInput" class="fld-input" placeholder="Name of this sound…" maxlength="40" autocomplete="off" spellcheck="false" />
+    <p class="modal-sub">Next: pick which category this sound belongs in — or create a new one.</p>
+    <div class="cat-grid" id="catGrid" role="group" aria-label="Choose a category"></div>
+    <div class="new-cat-row" id="newCatRow" hidden>
+      <input type="text" id="newCatInput" placeholder="New category name… (e.g. Highlight Reels)" maxlength="30" autocomplete="off" spellcheck="false" />
+      <button type="button" id="newCatAddBtn">Add</button>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="modal-cancel" id="addSoundCancel">Cancel<kbd>ESC</kbd></button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="keyModal" role="dialog" aria-modal="true" aria-labelledby="keyModalTitle" hidden>
+  <div class="modal">
+    <h3 id="keyModalTitle">🎹 Pick a key</h3>
+    <p class="modal-sub">Keys <b>1–9</b> are all in use. Choose a free key (A–Z) for this sound — it won&rsquo;t overwrite anything.</p>
+    <div class="modal-sound">
+      <span class="modal-ico" id="keyModalIco" aria-hidden="true">🔊</span>
+      <div>
+        <div class="modal-ttl" id="keyModalSound">—</div>
+        <div class="modal-hint">Ready to assign a key</div>
+      </div>
+    </div>
+    <div class="key-grid" id="keyGrid" role="group" aria-label="Choose a free key"></div>
+    <div class="modal-actions">
+      <button type="button" class="modal-cancel" id="keyCancel">Cancel<kbd>ESC</kbd></button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="eventModal" role="dialog" aria-modal="true" aria-labelledby="eventModalTitle" hidden>
+  <div class="modal">
+    <h3 id="eventModalTitle">➕ Add Event</h3>
+    <p class="modal-sub">Bawat event ay may sariling set ng pads — gumawa ng isa para sa bawat okasyon o batch ng sounds.</p>
+    <div class="modal-sound">
+      <span class="modal-ico" aria-hidden="true">🎛️</span>
+      <div>
+        <div class="modal-ttl" id="eventModalHint">Bagong event</div>
+        <div class="modal-hint">1 event = 1 batch ng pads</div>
+      </div>
+    </div>
+    <label class="fld-label" for="eventModalInput">Pangalan ng event</label>
+    <input type="text" id="eventModalInput" class="fld-input" placeholder="(e.g. Party Nights, Game Show 2…)" maxlength="30" autocomplete="off" spellcheck="false" />
+    <div class="modal-actions">
+      <button type="button" class="modal-cancel" id="eventModalCancel">Cancel<kbd>ESC</kbd></button>
+      <button type="button" class="modal-primary" id="eventModalSave">Create<kbd>ENTER</kbd></button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="eventDeleteModal" role="dialog" aria-modal="true" aria-labelledby="eventDeleteTitle" hidden>
+  <div class="modal">
+    <h3 id="eventDeleteTitle" class="danger-title">🗑 Delete Event</h3>
+    <p class="modal-sub">Sigurado ka bang gusto mong burahin ang event na ito? Kasama ang lahat ng pads nito — <b>hindi na ito maibabalik.</b></p>
+    <div class="modal-sound danger">
+      <span class="modal-ico" aria-hidden="true">🗑️</span>
+      <div>
+        <div class="modal-ttl" id="eventDeleteName">—</div>
+        <div class="modal-hint" id="eventDeleteInfo">0 pads</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="modal-cancel" id="eventDeleteCancel">Cancel<kbd>ESC</kbd></button>
+      <button type="button" class="modal-danger" id="eventDeleteConfirm">Delete<kbd>ENTER</kbd></button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="soundDeleteModal" role="dialog" aria-modal="true" aria-labelledby="soundDeleteTitle" hidden>
+  <div class="modal">
+    <h3 id="soundDeleteTitle" class="danger-title">🗑 Delete Sound</h3>
+    <p class="modal-sub">Sigurado ka bang gusto mong tanggalin ang sound na ito mula sa library mo? Ang mga pads na gumagamit nito ay mawawalan din nito — <b>hindi na ito maibabalik.</b></p>
+    <div class="modal-sound danger">
+      <span class="modal-ico" aria-hidden="true">🎵</span>
+      <div>
+        <div class="modal-ttl" id="soundDeleteName">—</div>
+        <div class="modal-hint" id="soundDeleteInfo">Custom sound</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="modal-cancel" id="soundDeleteCancel">Cancel<kbd>ESC</kbd></button>
+      <button type="button" class="modal-danger" id="soundDeleteConfirm">Delete<kbd>ENTER</kbd></button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="catDeleteModal" role="dialog" aria-modal="true" aria-labelledby="catDeleteTitle" hidden>
+  <div class="modal">
+    <h3 id="catDeleteTitle" class="danger-title">🗑 Delete Category</h3>
+    <p class="modal-sub">Sigurado ka bang gusto mong burahin ang category na ito? Kasama ang lahat ng sounds na nasa ilalim nito at ang mga pads na gumagamit sa kanila — <b>hindi na ito maibabalik.</b></p>
+    <div class="modal-sound danger">
+      <span class="modal-ico" aria-hidden="true">🏷️</span>
+      <div>
+        <div class="modal-ttl" id="catDeleteName">—</div>
+        <div class="modal-hint" id="catDeleteInfo">0 sounds</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="modal-cancel" id="catDeleteCancel">Cancel<kbd>ESC</kbd></button>
+      <button type="button" class="modal-danger" id="catDeleteConfirm">Delete<kbd>ENTER</kbd></button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>'use strict';
+const APP_VERSION='1.1.0'; // i-sync ito sa "version" sa package.json bawat release
+const CATEGORIES=[
+  {id:'cat-pinoy',label:'Pinoy Memes',icon:'🇵🇭',color:'amber'},
+  {id:'cat-laughs',label:'Meme Laughs',icon:'😂',color:'pink'},
+  {id:'cat-game',label:'Game & Show FX',icon:'🎮',color:'cyan'},
+  {id:'cat-pranks',label:'Pranks & FX',icon:'🕵️',color:'red'},
+  {id:'cat-pop',label:'Characters & Pop',icon:'🌟',color:'violet'},
+  {id:'cat-animals',label:'Animals',icon:'🐾',color:'green'}
+];
+const SOUNDS=[
+  {cat:'pinoy',title:'Aray Ko Malupiton',icon:'😫',file:'malupiton-arayyyyy-koo.mp3',keys:'aray ko malupiton'},
+  {cat:'pinoy',title:'Anong Kailangan',icon:'❓',file:'pinoy-reference-mp3cut.mp3',keys:'anong kailangan'},
+  {cat:'pinoy',title:'Masama Away',icon:'🛑',file:'oops-tama-na-masama-nakiki-pag-away-filipino-meme-sound-effects.mp3',keys:'masama away'},
+  {cat:'laughs',title:'Baby Laugh',icon:'👶',file:'baby-laughing-meme.mp3',keys:'baby laugh'},
+  {cat:'laughs',title:'Chipmunks Laugh',icon:'🐿️',file:'funny_82hiegE.mp3',keys:'chipmunks laugh'},
+  {cat:'laughs',title:'Eh Eh Eh',icon:'🤔',file:'eh-eh-ehhhh.mp3',keys:'eh eh eh'},
+  {cat:'game',title:'Heaven',icon:'😇',file:'heavenly-music-gaming-sound-effect-hd-mp3cut.mp3',keys:'heaven'},
+  {cat:'game',title:'Correct Answer',icon:'✅',file:'correct.mp3',keys:'correct answer'},
+  {cat:'game',title:'Wrong Answer',icon:'❌',file:'wrong-answer-buzzer.mp3',keys:'wrong answer'},
+  {cat:'game',title:'Womp Womp',icon:'🎺',file:'downer_noise.mp3',keys:'womp womp'},
+  {cat:'game',title:'Corny Joke',icon:'🥁',file:'rimshot.mp3',keys:'corny joke'},
+  {cat:'game',title:'Applause',icon:'👏',file:'applause.mp3',keys:'applause'},
+  {cat:'pranks',title:'Takbo (Run)',icon:'🏃',file:'take-off_2YqCEjc.mp3',keys:'takbo cartoon run'},
+  {cat:'pranks',title:'Sneaky',icon:'🕵️',file:'sneaky-prank-sound.mp3',keys:'sneaky'},
+  {cat:'pranks',title:'Relapse 2',icon:'⚠️',file:'relapse-2.mp3',keys:'relapse 2'},
+  {cat:'pranks',title:'Relapse JO',icon:'⚡',file:'relapse-jo.mp3',keys:'relapse jo'},
+  {cat:'pranks',title:'Bomb',icon:'💣',file:'explosion.mp3',keys:'bomb explosion'},
+  {cat:'pop',title:'MJ Hee-Hee',icon:'🕺',file:'michael-jackson-hee-hee.mp3',keys:'mj hee hee michael jackson'},
+  {cat:'pop',title:'A Few Moments Later',icon:'🧽',file:'a-few-moments-later-sponge-bob-sfx-fun.mp3',keys:'a few moments later spongebob'},
+  {cat:'pop',title:'WOW',icon:'😮',file:'anime-wow.mp3',keys:'wow'},
+  {cat:'pop',title:'Meme Sound',icon:'💥',file:'vine-boom.mp3',keys:'meme sound vine boom'},
+  {cat:'animals',title:'Croo Croo Bird',icon:'🐦',file:'crow.mp3',keys:'croo croo bird crow'},
+  {cat:'animals',title:'Dog Bark',icon:'🐶',file:'dog-bark.mp3',keys:'dog bark'},
+  {cat:'animals',title:'Cat Meow',icon:'🐱',file:'cat-meow.mp3',keys:'cat meow'},
+  {cat:'animals',title:'Cow Moo',icon:'🐮',file:'cow-moo.mp3',keys:'cow moo'}
+];
+// ---- GLOBAL STATE ----
+const MAX_CONCURRENT=8;
+const NUM_KEYS=9;
+const LETTER_KEYS='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const MAX_LINEUP=NUM_KEYS+LETTER_KEYS.length;
+const activeAudios=[];
+const playCount=new Map();
+const lineupKey='soundboard_lineup';      // legacy single line-up (migration source)
+const eventsKey='soundboard_events';      // all pad events [{id,name,items}]
+const activeEventKey='soundboard_active_event';
+const volumeKey='soundboard_volume';
+let padEvents=[];       // every event = its own batch of pads
+let activeEventId=null; // which event's pads are shown
+let lineupItems=[];     // live reference to the ACTIVE event's items
+let volumeLevel=1;
+try{volumeLevel=parseFloat(localStorage.getItem(volumeKey));if(isNaN(volumeLevel))volumeLevel=1;volumeLevel=Math.min(1,Math.max(0,volumeLevel));}
+catch(err){volumeLevel=1;}
+// ---- CUSTOM SOUND STATE (user-added MP3s) ----
+const sndMetaKey='soundboard_sounds_meta';
+const sndCatsKey='soundboard_sound_cats';
+const IDB_NAME='soundboard-sounds';
+const IDB_STORE='sounds';
+let customSounds=[];      // {id,title,cat,size,addedAt,url}
+let customCats=[];        // user-created category labels (string[])
+let pendingSoundFile=null;
+// ---- DURATION PROBES (for library list) ----
+const durCache=new Map();
+function fmtDur(sec){
+  if(!isFinite(sec)||sec<=0)return '';
+  const m=Math.floor(sec/60),s=Math.round(sec%60);
+  return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+function probeDuration(path,el){
+  if(!el)return;
+  if(!path){el.textContent='';return;}
+  const cached=durCache.get(path);
+  if(cached!==undefined){
+    if(typeof cached==='string')el.textContent=cached;
+    else cached.then(t=>{if(el.isConnected)el.textContent=t;});
+    return;
+  }
+  el.textContent='··:··';
+  const p=new Promise(resolve=>{
+    let done=false;
+    const finish=t=>{if(!done){done=true;resolve(t);}};
+    const a=new Audio();
+    a.preload='metadata';
+    a.onloadedmetadata=()=>finish(fmtDur(a.duration));
+    a.onerror=()=>finish('');
+    a.src=path;
+    setTimeout(()=>finish(''),8000);
+  });
+  durCache.set(path,p);
+  p.then(t=>{durCache.set(path,t);if(el.isConnected)el.textContent=t;});
+}
+// ---- RENDERERS ----
+function soundCat(prefix){return prefix.replace(/^cat-/,'');}
+function catIdForLabel(label){
+  const c=CATEGORIES.find(x=>x.label===label);
+  if(c)return c.id;
+  return 'cat-custom-'+String(label).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+}
+function allSoundCount(){return SOUNDS.length+customSounds.length;}
+function waveFor(title){
+  const t=String(title||'');
+  let h=2166136261;
+  for(let i=0;i<t.length;i++){h^=t.charCodeAt(i);h=Math.imul(h,16777619);}
+  const bars=[];
+  for(let i=0;i<4;i++)bars.push(30+Math.abs((h>>(i*4))&15)*70/15);
+  return bars;
+}
+function makeListItem(s){
+  const item=document.createElement('div');
+  item.className='list-item'+(s.custom?' custom':'');
+  item.tabIndex=0;item.setAttribute('role','button');
+  item.dataset.path=s.path||'';
+  item.dataset.name=String(s.keys||s.title||'').toLowerCase();
+  item.dataset.title=s.title;
+  item.title='Play '+s.title;
+  if(s.sid)item.dataset.sid=s.sid;
+  const left=document.createElement('div');left.className='item-left';
+  const play=document.createElement('span');play.className='play-icon';play.setAttribute('aria-hidden','true');play.textContent='▶';
+  const ico=document.createElement('span');ico.className='item-ico';ico.setAttribute('aria-hidden','true');ico.textContent=s.icon||'🎵';
+  const name=document.createElement('span');name.className='item-name';name.textContent=s.title;
+  left.append(play,ico,name);
+  const right=document.createElement('div');right.className='item-right';
+  const dur=document.createElement('span');dur.className='duration';dur.setAttribute('aria-hidden','true');
+  const keyBadge=document.createElement('span');keyBadge.className='lib-key-badge';keyBadge.hidden=true;
+  const add=document.createElement('button');add.type='button';add.className='add-btn';
+  add.setAttribute('aria-label','Queue '+s.title);add.title='Queue to Line-Up';add.textContent='+';
+  right.append(keyBadge,dur,add);
+  if(s.custom){
+    const rm=document.createElement('button');rm.type='button';rm.className='pad-rm';
+    rm.dataset.sid=s.sid;rm.title='Remove this sound';
+    rm.setAttribute('aria-label','Remove '+s.title);rm.textContent='✕';
+    right.appendChild(rm);
+  }
+  item.append(left,right);
+  probeDuration(s.path,dur);
+  return item;
+}
+function buildTabs(){
+  const nav=document.getElementById('tabs');
+  if(!nav)return;
+  const active=nav.querySelector('.tag.active');
+  const prev=(active&&active.dataset.target)||'all';
+  nav.innerHTML='';
+  const mk=(label,target,color,extra)=>{
+    const b=document.createElement('button');
+    b.type='button';
+    b.className='tag'+(target===prev?' active':'');
+    b.dataset.target=target;
+    if(color)b.dataset.color=color;
+    b.innerHTML=label+extra;
+    nav.appendChild(b);
+  };
+  mk('All','all',null,' <span class="tag-count">'+allSoundCount()+'</span>');
+  CATEGORIES.forEach(c=>{
+    const n=SOUNDS.filter(s=>s.cat===soundCat(c.id)).length+customSounds.filter(s=>s.cat===c.label).length;
+    mk(c.label,c.id,c.color,n?' <span class="tag-count">'+n+'</span>':'');
+  });
+  customCats.forEach(label=>{
+    const n=customSounds.filter(s=>s.cat===label).length;
+    mk('🎵 '+label,catIdForLabel(label),'amber',n?' <span class="tag-count">'+n+'</span>':'');
+    // Delete button (✕) para sa custom categories — nasa loob ng kanyang sariling tag
+    const tb=nav.lastElementChild;
+    if(tb){
+      tb.classList.add('has-rm');
+      const rm=document.createElement('span');
+      rm.className='tag-rm';
+      rm.dataset.cat=label;
+      rm.title='Burahin ang category na ito';
+      rm.setAttribute('aria-label','Delete category '+label);
+      rm.textContent='✕';
+      tb.appendChild(rm);
+    }
+  });
+}
+function buildSectionInto(wrap,id,icon,label,color,items){
+  const sec=document.createElement('section');
+  sec.className='section';sec.id=id;sec.dataset.color=color;
+  const head=document.createElement('div');head.className='section-head';
+  const h=document.createElement('h2');h.textContent=`${icon} ${label}`;
+  const count=document.createElement('span');count.className='count';count.textContent=`${items.length} sounds`;
+  const rule=document.createElement('span');rule.className='rule';
+  head.append(h,count,rule);
+  sec.appendChild(head);
+  if(items.length===0){
+    const empty=document.createElement('p');
+    empty.className='empty-hint';
+    empty.textContent='No sounds here yet.';
+    sec.appendChild(empty);
+  }else{
+    const col=document.createElement('div');col.className='list-col';
+    items.forEach(s=>col.appendChild(makeListItem(s)));
+    sec.appendChild(col);
+  }
+  wrap.appendChild(sec);
+}
+function buildSections(){
+  const wrap=document.getElementById('sectionsWrap');
+  CATEGORIES.forEach(cat=>{
+    const statics=SOUNDS.filter(s=>s.cat===soundCat(cat.id))
+      .map(s=>({title:s.title,icon:s.icon,path:'media/sounds/'+s.file,keys:s.keys}));
+    const customs=customSounds.filter(s=>s.cat===cat.label)
+      .map(s=>({title:s.title,icon:s.icon||'🎵',path:s.url||'',sid:s.id,custom:true}));
+    buildSectionInto(wrap,cat.id,cat.icon,cat.label,cat.color,statics.concat(customs));
+  });
+  customCats.forEach(label=>{
+    const items=customSounds.filter(s=>s.cat===label)
+      .map(s=>({title:s.title,icon:s.icon||'🎵',path:s.url||'',sid:s.id,custom:true}));
+    buildSectionInto(wrap,catIdForLabel(label),'🎵',label,'amber',items);
+  });
+}
+function selectTab(tab){
+  if(typeof tab==='string'){tab=document.querySelector('.tag[data-target="'+tab+'"]')||document.querySelector('.tag[data-target="all"]');}
+  document.querySelectorAll('.tag').forEach(t=>t.classList.toggle('active',t===tab));
+  if(!tab)return;
+  const target=tab.dataset.target;
+  document.querySelectorAll('#sectionsWrap .section').forEach(sec=>{
+    sec.style.display=(target==='all'||sec.id===target)?'':'none';
+  });
+  const list=document.getElementById('mainContent');
+  if(list)list.scrollTop=0;
+}
+// ---- SOUND FILE STORAGE (IndexedDB) ----
+function idbOpen(){
+  return new Promise((resolve,reject)=>{
+    if(!('indexedDB' in window)){reject(new Error('IndexedDB unavailable'));return;}
+    const req=indexedDB.open(IDB_NAME,1);
+    req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(IDB_STORE))db.createObjectStore(IDB_STORE);};
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+}
+function idbPut(key,blob){
+  return idbOpen().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction(IDB_STORE,'readwrite');
+    tx.objectStore(IDB_STORE).put(blob,key);
+    tx.oncomplete=()=>resolve();
+    tx.onerror=()=>reject(tx.error);
+  }));
+}
+function idbGet(key){
+  return idbOpen().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction(IDB_STORE,'readonly');
+    const req=tx.objectStore(IDB_STORE).get(key);
+    req.onsuccess=()=>resolve(req.result||null);
+    req.onerror=()=>reject(req.error);
+  }));
+}
+function idbDel(key){
+  return idbOpen().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction(IDB_STORE,'readwrite');
+    tx.objectStore(IDB_STORE).delete(key);
+    tx.oncomplete=()=>resolve();
+    tx.onerror=()=>reject(tx.error);
+  }));
+}
+function idbKeys(){
+  return idbOpen().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction(IDB_STORE,'readonly');
+    const req=tx.objectStore(IDB_STORE).getAllKeys();
+    req.onsuccess=()=>resolve(req.result||[]);
+    req.onerror=()=>reject(req.error);
+  }));
+}
+function fmtSize(bytes){
+  if(bytes>=1048576)return (bytes/1048576).toFixed(1)+' MB';
+  if(bytes>=1024)return (bytes/1024).toFixed(0)+' KB';
+  return bytes+' B';
+}
+function titleFromFile(name){return String(name).replace(/\.[^.]+$/,'').replace(/[_\-]+/g,' ').trim();}
+// ---- CUSTOM SOUND STORAGE ----
+function saveSndMeta(){
+  const clean=customSounds.filter(s=>s&&!s.missing).map(s=>({id:s.id,title:s.title,cat:s.cat,size:s.size,addedAt:s.addedAt}));
+  try{localStorage.setItem(sndMetaKey,JSON.stringify(clean));}catch(err){}
+}
+function saveSndCats(){try{localStorage.setItem(sndCatsKey,JSON.stringify(customCats));}catch(err){}}
+function loadCustomSounds(){
+  try{const raw=JSON.parse(localStorage.getItem(sndMetaKey)||'[]');customSounds=Array.isArray(raw)?raw:[];}catch(err){customSounds=[];}
+  try{const c=JSON.parse(localStorage.getItem(sndCatsKey)||'[]');customCats=Array.isArray(c)?c:[];}catch(err){customCats=[];}
+  const metas=customSounds;
+  Promise.all(metas.map(m=>idbGet(m.id))).then(blobs=>{
+    customSounds=[];
+    metas.forEach((m,i)=>{
+      if(blobs[i]){m.url=URL.createObjectURL(blobs[i]);customSounds.push(m);}
+    });
+    saveSndMeta();
+    rebuildSoundUi();
+    // Orphan sweep: burahin ang anumang IndexedDB blob na WALANG metadata entry
+    // (hal. nag-crash ang save sa pagitan ng idbPut at saveSndMeta) — guarantee
+    // na walang naiitago o hidden space consumers na naiipon.
+    return idbKeys().then(keys=>{
+      const live=new Set(customSounds.map(x=>x.id));
+      const orphans=keys.filter(k=>!live.has(String(k)));
+      if(!orphans.length)return;
+      console.warn('Sweeping '+orphans.length+' orphaned blob(s) from storage');
+      return Promise.all(orphans.map(k=>idbDel(k)));
+    }).catch(err=>console.warn('Orphan sweep failed',err));
+  }).catch(err=>{
+    console.warn('Custom sound load failed',err);
+    customSounds=[];
+    rebuildSoundUi();
+  });
+}
+function rebuildSoundUi(){
+  const nav=document.getElementById('tabs');
+  if(nav)nav.innerHTML='';
+  buildTabs();
+  const wrap=document.getElementById('sectionsWrap');
+  if(wrap)wrap.innerHTML='';
+  buildSections();
+  const brandSub=document.getElementById('brandSub');
+  if(brandSub)brandSub.textContent=allSoundCount()+' sounds loaded · v'+APP_VERSION;
+  const libStor=document.getElementById('libStorage');
+  if(libStor){
+    const tot=customSounds.reduce((n,s)=>n+(Number(s.size)||0),0);
+    libStor.textContent=tot>0?' · '+fmtSize(tot)+' custom':'';
+  }
+  renderLineup();
+  const input=document.getElementById('searchInput');
+  if(input&&input.value.trim())filterSounds();
+}
+function resolveItemPath(item){
+  if(item&&item.sid){
+    const cs=customSounds.find(s=>s.id===item.sid);
+    return (cs&&cs.url)?cs.url:'';
+  }
+  return item?item.path:'';
+}
+// ---- ADD SOUND FLOW ----
+function existingCatLabels(){
+  return CATEGORIES.map(c=>c.label).filter(l=>!customCats.includes(l)).concat(customCats);
+}
+function openAddSoundModal(file){
+  pendingSoundFile=file;
+  const fileEl=document.getElementById('addSoundFile');
+  const size=document.getElementById('addSoundSize');
+  const nameInput=document.getElementById('addSoundNameInput');
+  if(fileEl)fileEl.textContent=file.name;
+  if(size)size.textContent=fmtSize(file.size)+' · audio';
+  if(nameInput)nameInput.value=titleFromFile(file.name);
+  const grid=document.getElementById('catGrid');
+  grid.innerHTML='';
+  existingCatLabels().forEach(cat=>{
+    const b=document.createElement('button');
+    b.type='button';b.className='cat-btn';b.dataset.cat=cat;b.textContent=cat;
+    grid.appendChild(b);
+  });
+  const nb=document.createElement('button');
+  nb.type='button';nb.className='cat-btn new';nb.textContent='➕ New category';
+  nb.setAttribute('aria-label','Create a new category');
+  grid.appendChild(nb);
+  document.getElementById('newCatRow').hidden=true;
+  document.getElementById('newCatInput').value='';
+  const m=document.getElementById('addSoundModal');
+  m.hidden=false;
+  requestAnimationFrame(()=>m.classList.add('open'));
+  const cancel=document.getElementById('addSoundCancel');
+  if(cancel)cancel.focus();
+}
+function closeAddSoundModal(){
+  const m=document.getElementById('addSoundModal');
+  if(!m)return;
+  m.classList.remove('open');
+  setTimeout(()=>{if(!m.classList.contains('open'))m.hidden=true;},180);
+}
+function commitSound(catLabel){
+  if(!pendingSoundFile)return;
+  const f=pendingSoundFile;
+  const nameInput=document.getElementById('addSoundNameInput');
+  const customName=nameInput?nameInput.value.trim().slice(0,40):'';
+  const title=customName||titleFromFile(f.name);
+  const id='s'+Date.now()+'-'+Math.floor(Math.random()*1e6);
+  const meta={id,title,cat:catLabel,size:f.size,addedAt:Date.now()};
+  idbPut(id,f).then(()=>{
+    meta.url=URL.createObjectURL(f);
+    customSounds.push(meta);
+    const builtIn=CATEGORIES.some(c=>c.label===catLabel);
+    if(!builtIn&&!customCats.includes(catLabel)){customCats.push(catLabel);saveSndCats();}
+    saveSndMeta();
+    pendingSoundFile=null;
+    closeAddSoundModal();
+    rebuildSoundUi();
+    showToast(meta.title+' added to "'+catLabel+'"','success');
+  }).catch(err=>{
+    console.error(err);
+    showToast('Could not save that sound. Browser storage may be full.','error');
+  });
+}
+function startNewCat(){
+  const row=document.getElementById('newCatRow');
+  row.hidden=false;
+  document.getElementById('newCatInput').focus();
+}
+function commitNewCat(){
+  const inp=document.getElementById('newCatInput');
+  const name=inp.value.trim().slice(0,30);
+  if(!name){showToast('Type a category name first.','error');inp.focus();return;}
+  commitSound(name);
+  inp.value='';
+}
+function deleteCustomSound(sid){
+  openSoundDeleteModal(sid);
+}
+// ---- AUDIO ----
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function removeAudio(audio){
+  const i=activeAudios.indexOf(audio);
+  if(i>-1)activeAudios.splice(i,1);
+  if(audio._padEl){
+    const n=(playCount.get(audio._padEl)||1)-1;
+    if(n<=0){playCount.delete(audio._padEl);audio._padEl.classList.remove('playing');}
+    else playCount.set(audio._padEl,n);
+  }
+  syncUiState();
+  if(activeAudios.length===0)setNowPlaying('');
+}
+const OVERLAP_MS=50; // gaano katagal nag-ooverlap ang previous trigger bago tuluyang mamatay (0.05s)
+function retireAudio(audio){
+  // Hindi instant kill: may 50ms na overlap na may mabilis na fade —
+  // para smooth ang transition sa spam at hindi ma-chop ang sound (anti-dull).
+  if(audio._retireTimer)clearTimeout(audio._retireTimer);
+  audio._retireTimer=setTimeout(()=>{
+    audio._retireTimer=null;
+    if(activeAudios.indexOf(audio)<0)return; // natural na natapos na bago pa umabot sa fade
+    const startVol=audio.volume,t0=Date.now();
+    const fade=setInterval(()=>{
+      const k=1-(Date.now()-t0)/OVERLAP_MS;
+      if(k<=0||activeAudios.indexOf(audio)<0){
+        clearInterval(fade);
+        audio.pause();try{audio.currentTime=0;}catch(err){}
+        removeAudio(audio);
+        return;
+      }
+      try{audio.volume=Math.max(0,startVol*k);}catch(err){}
+    },16);
+  },OVERLAP_MS);
+}
+function playSound(path,padEl){
+  if(!path){showToast('That sound file is not available.','error');return;}
+  // Same-sound retrigger: ang bagong press ay NAG-START AGAD at naka-overlap ng ~50ms
+  // ang previous trigger bago ito tuluyang mamatay (may quick fade) — tapos CURRENT
+  // lang ang tuloy. Yung mga previously-retiring instances hindi na re-re-extend,
+  // kaya bawat instance ay mamamatay 50ms pagkatapos ma-supersede.
+  for(let i=activeAudios.length-1;i>=0;i--){
+    if(activeAudios[i]._srcPath===path&&!activeAudios[i]._retireTimer){
+      retireAudio(activeAudios[i]);
+    }
+  }
+  const audio=new Audio();
+  audio.preload='auto';
+  audio.volume=volumeLevel;
+  audio._padEl=padEl||null;
+  audio._srcPath=path; // identity used for same-sound dedup
+  const drop=()=>removeAudio(audio);
+  audio.onerror=()=>{drop();showToast('Could not load that sound.','error');};
+  audio.onended=drop;
+  while(activeAudios.length>=MAX_CONCURRENT){
+    const old=activeAudios[0];
+    if(old){old.pause();old.currentTime=0;removeAudio(old);}
+  }
+  audio.src=path;
+  audio.play().catch(err=>{
+    drop();
+    console.error('Playback failed:',err);
+    showToast(err&&err.name==='NotAllowedError'?'Click once first, then sounds are unlocked.':'Could not play that sound.','error');
+  });
+  activeAudios.push(audio);
+  if(padEl){
+    playCount.set(padEl,(playCount.get(padEl)||0)+1); // live instances ng sound sa pad (pwedeng 2 saglit dahil sa 50ms overlap)
+    padEl.classList.add('playing');
+  }
+  if(padEl&&padEl.dataset.title)setNowPlaying(padEl.dataset.title);
+  syncUiState();
+}
+function stopAllSounds(){
+  const list=activeAudios.slice();
+  list.forEach(a=>{a.pause();a.currentTime=0;});
+  activeAudios.length=0;
+  playCount.clear();
+  document.querySelectorAll('.playing').forEach(p=>p.classList.remove('playing'));
+  setNowPlaying('');
+  syncUiState();
+}
+function syncUiState(){
+  const btn=document.getElementById('stopBtn');
+  if(btn)btn.classList.toggle('playing',activeAudios.length>0);
+}
+const nowEl=document.getElementById('nowPlaying');
+function setNowPlaying(title){
+  if(!nowEl)return;
+  nowEl.hidden=!title;
+  nowEl.textContent='';
+  if(!title)return;
+  const eq=document.createElement('span');
+  eq.className='eq';eq.setAttribute('aria-hidden','true');
+  eq.innerHTML='<i></i><i></i><i></i>';
+  const t=document.createElement('span');
+  t.textContent=title;
+  nowEl.append(eq,t);
+}
+let toastTimer=null;
+function showToast(msg,type){
+  const t=document.getElementById('toast');
+  if(!t)return;
+  t.textContent=msg;
+  t.classList.remove('success','error');
+  if(type==='success'||type==='error')t.classList.add(type);
+  t.classList.add('visible');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('visible'),1800);
+}
+// ---- PAD EVENTS (batches of pads) ----
+function activeEvent(){return padEvents.find(e=>e.id===activeEventId)||null;}
+function saveEvents(){
+  try{localStorage.setItem(eventsKey,JSON.stringify(padEvents));}
+  catch(err){console.warn('Events save failed',err);}
+  try{localStorage.setItem(activeEventKey,activeEventId||'');}
+  catch(err){}
+}
+function loadEventState(){
+  try{
+    const raw=JSON.parse(localStorage.getItem(eventsKey));
+    if(Array.isArray(raw))padEvents=raw.filter(e=>e&&Array.isArray(e.items)).map(e=>({id:e.id,name:e.name||'Event',items:e.items}));
+  }catch(err){padEvents=[];}
+  // Purge any event auto-created from the old single Line-Up (no default pads on startup)
+  if(padEvents.some(e=>String(e.id||'').endsWith('-legacy'))){
+    padEvents=padEvents.filter(e=>!String(e.id||'').endsWith('-legacy'));
+    try{localStorage.removeItem(lineupKey);}catch(err){}
+  }
+  try{
+    const a=localStorage.getItem(activeEventKey);
+    if(a&&padEvents.some(e=>e.id===a))activeEventId=a;
+  }catch(err){}
+  if(!activeEventId&&padEvents.length>0)activeEventId=padEvents[0].id;
+  const ev=activeEvent();
+  lineupItems=ev?ev.items:[];
+  if(ev){ensureLineupKeys();compactLineupKeys();}
+}
+function createEvent(name){
+  const clean=String(name||'').trim().slice(0,30)||('Event '+(padEvents.length+1));
+  const ev={id:'ev'+Date.now()+'-'+Math.floor(Math.random()*1e4),name:clean,items:[]};
+  padEvents.push(ev);
+  activeEventId=ev.id;
+  lineupItems=ev.items;
+  saveEvents();
+  renderEventBar();
+  renderLineup();
+  showToast('"'+clean+'" created — add sounds to it with the + button.','success');
+}
+function switchEvent(id){
+  const ev=padEvents.find(e=>e.id===id);
+  if(!ev)return;
+  activeEventId=id;
+  lineupItems=ev.items;
+  ensureLineupKeys();
+  compactLineupKeys();
+  saveEvents();
+  renderEventBar();
+  renderLineup();
+  showToast('Now using pads for "'+ev.name+'"');
+}
+function deleteActiveEvent(){
+  if(!activeEvent())return;
+  openEventDeleteModal();
+}
+// ---- EVENT DELETE MODAL (styled confirm dialog) ----
+let eventDeleteModalEl=document.getElementById('eventDeleteModal');
+let deleteFlashTimer=null;
+// Glow follows the pressed key: ENTER -> Delete glows red, ESC -> Cancel glows cyan
+function flashDeleteKey(which){
+  const btn=document.getElementById(which==='cancel'?'eventDeleteCancel':'eventDeleteConfirm');
+  if(btn){
+    btn.classList.remove('flash-del','flash-cancel');
+    void btn.offsetWidth; // restart the glow even on rapid key repeats
+    btn.classList.add(which==='cancel'?'flash-cancel':'flash-del');
+  }
+  if(deleteFlashTimer)clearTimeout(deleteFlashTimer);
+  deleteFlashTimer=setTimeout(()=>{
+    deleteFlashTimer=null;
+    if(which==='cancel')closeEventDeleteModal();
+    else confirmDeleteEvent();
+  },140);
+}
+// Bulletproof keys bound directly to the modal (capture phase — fires before anything else):
+if(eventDeleteModalEl){
+  eventDeleteModalEl.addEventListener('keydown',(ev)=>{
+    if(ev.code==='Escape'){ev.preventDefault();ev.stopPropagation();flashDeleteKey('cancel');return;}
+    if(ev.code==='Enter'||ev.code==='NumpadEnter'||ev.key==='Enter'){
+      // ENTER = DELETE, always — matching the kbd hint on the button
+      ev.preventDefault();
+      ev.stopPropagation();
+      flashDeleteKey('confirm');
+    }
+  },true);
+}
+function openEventDeleteModal(){
+  const ev=activeEvent();
+  if(!ev)return;
+  const name=document.getElementById('eventDeleteName');
+  const info=document.getElementById('eventDeleteInfo');
+  if(name)name.textContent=ev.name;
+  if(info)info.textContent=ev.items.length+' pad'+(ev.items.length===1?'':'s')+' permanently removed';
+  if(!eventDeleteModalEl)return;
+  // Clear any stale key-flash glow
+  const cB=document.getElementById('eventDeleteConfirm');
+  const cC=document.getElementById('eventDeleteCancel');
+  if(cB)cB.classList.remove('flash-del','flash-cancel');
+  if(cC)cC.classList.remove('flash-del','flash-cancel');
+  eventDeleteModalEl.hidden=false;
+  requestAnimationFrame(()=>eventDeleteModalEl.classList.add('open'));
+  // Focus the DELETE button so the glow sits on the action ENTER performs
+  if(cB)cB.focus();
+}
+function closeEventDeleteModal(){
+  if(deleteFlashTimer){clearTimeout(deleteFlashTimer);deleteFlashTimer=null;} // kanselahin ang pending Enter-delete kapag nag-cancel
+  if(!eventDeleteModalEl)return;
+  eventDeleteModalEl.classList.remove('open');
+  setTimeout(()=>{if(!eventDeleteModalEl.classList.contains('open'))eventDeleteModalEl.hidden=true;},180);
+}
+function confirmDeleteEvent(){
+  const ev=activeEvent();
+  closeEventDeleteModal();
+  if(!ev)return;
+  padEvents=padEvents.filter(e=>e.id!==ev.id);
+  activeEventId=padEvents.length?padEvents[0].id:null;
+  const next=activeEvent();
+  lineupItems=next?next.items:[];
+  saveEvents();
+  renderEventBar();
+  renderLineup();
+  showToast('Event "'+ev.name+'" deleted.','success');
+}
+// ---- SOUND DELETE MODAL (styled confirm for custom sounds) ----
+let soundDeleteModalEl=document.getElementById('soundDeleteModal');
+let pendingSoundDeleteSid=null;
+let soundDeleteFlashTimer=null;
+// Glow follows the pressed key: ENTER -> Delete glows red, ESC -> Cancel glows cyan
+function flashSoundDeleteKey(which){
+  const btn=document.getElementById(which==='cancel'?'soundDeleteCancel':'soundDeleteConfirm');
+  if(btn){
+    btn.classList.remove('flash-del','flash-cancel');
+    void btn.offsetWidth; // restart the glow even on rapid key repeats
+    btn.classList.add(which==='cancel'?'flash-cancel':'flash-del');
+  }
+  if(soundDeleteFlashTimer)clearTimeout(soundDeleteFlashTimer);
+  soundDeleteFlashTimer=setTimeout(()=>{
+    soundDeleteFlashTimer=null;
+    if(which==='cancel')closeSoundDeleteModal();
+    else confirmDeleteCustomSound();
+  },140);
+}
+// Bulletproof keys bound directly to the modal (capture phase — fires before anything else):
+if(soundDeleteModalEl){
+  soundDeleteModalEl.addEventListener('keydown',(ev)=>{
+    if(ev.code==='Escape'){ev.preventDefault();ev.stopPropagation();flashSoundDeleteKey('cancel');return;}
+    if(ev.code==='Enter'||ev.code==='NumpadEnter'||ev.key==='Enter'){
+      // ENTER = DELETE, always — matching the kbd hint on the button
+      ev.preventDefault();
+      ev.stopPropagation();
+      flashSoundDeleteKey('confirm');
+    }
+  },true);
+}
+function openSoundDeleteModal(sid){
+  const idx=customSounds.findIndex(x=>x.id===sid);
+  if(idx<0)return;
+  pendingSoundDeleteSid=sid;
+  const snd=customSounds[idx];
+  const name=document.getElementById('soundDeleteName');
+  const info=document.getElementById('soundDeleteInfo');
+  if(name)name.textContent=snd.title;
+  const padCount=padEvents.reduce((n,e)=>n+e.items.filter(it=>it.sid===sid).length,0);
+  if(info)info.textContent='Custom sound'+(padCount>0?' · '+padCount+' pad'+(padCount===1?'':'s')+' will lose it':'');
+  if(!soundDeleteModalEl)return;
+  // Clear any stale key-flash glow
+  const cB=document.getElementById('soundDeleteConfirm');
+  const cC=document.getElementById('soundDeleteCancel');
+  if(cB)cB.classList.remove('flash-del','flash-cancel');
+  if(cC)cC.classList.remove('flash-del','flash-cancel');
+  soundDeleteModalEl.hidden=false;
+  requestAnimationFrame(()=>soundDeleteModalEl.classList.add('open'));
+  // Focus the DELETE button so the glow sits on the action ENTER performs
+  if(cB)cB.focus();
+}
+function closeSoundDeleteModal(){
+  pendingSoundDeleteSid=null;
+  if(soundDeleteFlashTimer){clearTimeout(soundDeleteFlashTimer);soundDeleteFlashTimer=null;} // safety: walang pending delete pagkatapos mag-cancel
+  if(!soundDeleteModalEl)return;
+  soundDeleteModalEl.classList.remove('open');
+  setTimeout(()=>{if(!soundDeleteModalEl.classList.contains('open'))soundDeleteModalEl.hidden=true;},180);
+}
+async function confirmDeleteCustomSound(){
+  const sid=pendingSoundDeleteSid;
+  closeSoundDeleteModal();
+  if(!sid)return;
+  const idx=customSounds.findIndex(x=>x.id===sid);
+  if(idx<0)return;
+  const snd=customSounds[idx];
+  try{
+    await idbDel(sid); // hintayin na TOTOONG nabura sa database bago magpatuloy
+  }catch(err){
+    console.error('IndexedDB delete failed:',err);
+    showToast('Could not delete from storage — try again.','error');
+    return; // huwag munang burahin ang metadata kapag pumalya — para pwedeng ulitin
+  }
+  if(snd.url){URL.revokeObjectURL(snd.url);durCache.delete(snd.url);}
+  customSounds.splice(idx,1);
+  saveSndMeta();
+  // Remove this custom sound from every event's pads (in place)
+  padEvents.forEach(e=>{for(let i=e.items.length-1;i>=0;i--)if(e.items[i].sid===sid)e.items.splice(i,1);});
+  const cur=activeEvent();
+  lineupItems=cur?cur.items:[];
+  compactLineupKeys(); // auto-compact pagkatapos mabura ang custom sound sa pads
+  saveLineup();
+  rebuildSoundUi();
+  showToast('Sound removed.','success');
+}
+// ---- CATEGORY DELETE MODAL (styled confirm for custom categories) ----
+let catDeleteModalEl=document.getElementById('catDeleteModal');
+let pendingCatDelete=null;
+let catDeleteFlashTimer=null;
+// Glow follows the pressed key: ENTER -> Delete glows red, ESC -> Cancel glows cyan
+function flashCatDeleteKey(which){
+  const btn=document.getElementById(which==='cancel'?'catDeleteCancel':'catDeleteConfirm');
+  if(btn){
+    btn.classList.remove('flash-del','flash-cancel');
+    void btn.offsetWidth; // restart the glow even on rapid key repeats
+    btn.classList.add(which==='cancel'?'flash-cancel':'flash-del');
+  }
+  if(catDeleteFlashTimer)clearTimeout(catDeleteFlashTimer);
+  catDeleteFlashTimer=setTimeout(()=>{
+    catDeleteFlashTimer=null;
+    if(which==='cancel')closeCatDeleteModal();
+    else confirmDeleteCategory();
+  },140);
+}
+// Bulletproof keys bound directly to the modal (capture phase — fires before anything else):
+if(catDeleteModalEl){
+  catDeleteModalEl.addEventListener('keydown',(ev)=>{
+    if(ev.code==='Escape'){ev.preventDefault();ev.stopPropagation();flashCatDeleteKey('cancel');return;}
+    if(ev.code==='Enter'||ev.code==='NumpadEnter'||ev.key==='Enter'){
+      // ENTER = DELETE, always — matching the kbd hint on the button
+      ev.preventDefault();
+      ev.stopPropagation();
+      flashCatDeleteKey('confirm');
+    }
+  },true);
+}
+function openCatDeleteModal(label){
+  if(!customCats.includes(label))return;
+  pendingCatDelete=label;
+  const name=document.getElementById('catDeleteName');
+  const info=document.getElementById('catDeleteInfo');
+  if(name)name.textContent=label;
+  const n=customSounds.filter(s=>s.cat===label).length;
+  if(info)info.textContent=n+' sound'+(n===1?'':'s')+' permanently removed';
+  if(!catDeleteModalEl)return;
+  // Clear any stale key-flash glow
+  const cB=document.getElementById('catDeleteConfirm');
+  const cC=document.getElementById('catDeleteCancel');
+  if(cB)cB.classList.remove('flash-del','flash-cancel');
+  if(cC)cC.classList.remove('flash-del','flash-cancel');
+  catDeleteModalEl.hidden=false;
+  requestAnimationFrame(()=>catDeleteModalEl.classList.add('open'));
+  // Focus the DELETE button so the glow sits on the action ENTER performs
+  if(cB)cB.focus();
+}
+function closeCatDeleteModal(){
+  pendingCatDelete=null;
+  if(catDeleteFlashTimer){clearTimeout(catDeleteFlashTimer);catDeleteFlashTimer=null;} // safety: walang pending delete pagkatapos mag-cancel
+  if(!catDeleteModalEl)return;
+  catDeleteModalEl.classList.remove('open');
+  setTimeout(()=>{if(!catDeleteModalEl.classList.contains('open'))catDeleteModalEl.hidden=true;},180);
+}
+async function confirmDeleteCategory(){
+  const label=pendingCatDelete;
+  closeCatDeleteModal();
+  if(!label)return;
+  const doomed=customSounds.filter(s=>s.cat===label);
+  const doomedIds=doomed.map(s=>s.id);
+  try{
+    await Promise.all(doomedIds.map(id=>idbDel(id))); // hintayin na TOTOONG nabura sa database
+  }catch(err){
+    console.error('IndexedDB delete failed:',err);
+    showToast('Could not delete category contents — try again.','error');
+    return; // huwag munang burahin ang metadata kapag pumalya
+  }
+  doomed.forEach(s=>{if(s.url){URL.revokeObjectURL(s.url);durCache.delete(s.url);}});
+  customSounds=customSounds.filter(s=>s.cat!==label);
+  customCats=customCats.filter(c=>c!==label);
+  // Alisin ang mga sid ng category na ito sa LAHAT ng event pads
+  const died=new Set(doomedIds);
+  padEvents.forEach(e=>{for(let i=e.items.length-1;i>=0;i--)if(e.items[i].sid&&died.has(e.items[i].sid))e.items.splice(i,1);});
+  const cur=activeEvent();
+  lineupItems=cur?cur.items:[];
+  compactLineupKeys(); // auto-compact pagkatapos mabura ang mga custom sound sa pads
+  saveSndMeta();
+  saveSndCats();
+  saveEvents();
+  rebuildSoundUi();
+  showToast('Category "'+label+'" deleted'+(doomed.length?' with '+doomed.length+' sound'+(doomed.length===1?'':'s'):'')+'.','success');
+}
+// ---- LIBRARY KEY BADGES (show assigned key next to library rows) ----
+function updateLibKeyBadges(){
+  document.querySelectorAll('.list-item').forEach(item=>{
+    let key='';
+    for(const it of lineupItems){
+      if(item.dataset.sid){
+        if(it.sid&&it.sid===item.dataset.sid){key=it.key||'';break;}
+      }else if(!it.sid&&it.path&&it.path===item.dataset.path){key=it.key||'';break;}
+    }
+    let b=item.querySelector('.lib-key-badge');
+    if(!b){
+      b=document.createElement('span');b.className='lib-key-badge';
+      const r=item.querySelector('.item-right');
+      if(!r)return;
+      r.prepend(b);
+    }
+    if(key){b.hidden=false;b.textContent=key;b.title='Assigned to key '+key+' in this event';}
+    else{b.hidden=true;b.textContent='';}
+  });
+}
+function renameActiveEvent(){
+  if(!activeEvent())return;
+  openEventModal('rename');
+}
+function renderEventBar(){
+  const sel=document.getElementById('eventSelect');
+  const renameBtn=document.getElementById('eventRenameBtn');
+  const delBtn=document.getElementById('eventDeleteBtn');
+  const empty=document.getElementById('eventEmpty');
+  const grid=document.getElementById('lineupContainer');
+  const clearBtn=document.getElementById('clearBtn');
+  const hasEvents=padEvents.length>0;
+  if(sel){
+    sel.innerHTML='';
+    padEvents.forEach(e=>{
+      const o=document.createElement('option');
+      o.value=e.id;
+      o.textContent=e.name;
+      if(e.id===activeEventId)o.selected=true;
+      sel.appendChild(o);
+    });
+    sel.hidden=!hasEvents;
+  }
+  if(renameBtn)renameBtn.hidden=!hasEvents;
+  if(delBtn)delBtn.hidden=!hasEvents;
+  if(empty)empty.hidden=hasEvents;
+  if(grid)grid.hidden=!hasEvents;
+  if(clearBtn)clearBtn.hidden=!hasEvents;
+}
+// ---- EVENT MODAL (styled Add/Rename dialog) ----
+let eventModal=document.getElementById('eventModal');
+let eventModalAction=null; // 'create' | 'rename'
+function openEventModal(mode){
+  eventModalAction=(mode==='rename'&&activeEvent())?'rename':'create';
+  const title=document.getElementById('eventModalTitle');
+  const hint=document.getElementById('eventModalHint');
+  const save=document.getElementById('eventModalSave');
+  const input=document.getElementById('eventModalInput');
+  if(eventModalAction==='rename'){
+    if(title)title.textContent='✎ Rename Event';
+    if(hint)hint.textContent=activeEvent().name;
+    if(save)save.innerHTML='Save<kbd>ENTER</kbd>';
+    if(input)input.value=activeEvent().name;
+  }else{
+    if(title)title.textContent='➕ Add Event';
+    if(hint)hint.textContent='Bagong event';
+    if(save)save.innerHTML='Create<kbd>ENTER</kbd>';
+    if(input)input.value='Event '+(padEvents.length+1);
+  }
+  if(!eventModal)return;
+  eventModal.hidden=false;
+  requestAnimationFrame(()=>eventModal.classList.add('open'));
+  if(input){
+    input.focus();
+    input.select();
+    // Direct listener on the input itself — Enter always commits, no matter the focus/global state
+    input.onkeydown=(ev)=>{
+      if(ev.key==='Enter'||ev.code==='Enter'||ev.code==='NumpadEnter'){
+        ev.preventDefault();
+        ev.stopPropagation();
+        commitEventModal();
+      }
+    };
+  }
+}
+function closeEventModal(){
+  eventModalAction=null;
+  if(!eventModal)return;
+  eventModal.classList.remove('open');
+  setTimeout(()=>{if(!eventModal.classList.contains('open'))eventModal.hidden=true;},180);
+}
+function commitEventModal(){
+  const input=document.getElementById('eventModalInput');
+  const val=input?input.value.trim().slice(0,30):'';
+  if(eventModalAction==='rename'){
+    const ev=activeEvent();
+    if(ev&&val){ev.name=val;saveEvents();showToast('Event renamed to "'+val+'"','success');}
+    closeEventModal();
+    return;
+  }
+  if(!val){showToast('Type an event name first.','error');if(input)input.focus();return;}
+  closeEventModal();
+  createEvent(val||('Event '+(padEvents.length+1)));
+}
+// ---- LINE-UP (QUEUE) ----
+function saveLineup(){
+  saveEvents();
+  renderEventBar();
+  renderLineup();
+}
+function addToLineup(title,path,icon,sid){
+  if(!title||!path)return;
+  if(!activeEvent()){
+    showToast('Gumawa muna ng event (➕ Add Event) para makapag-add ng pads.','error');
+    return;
+  }
+  const nkey=freeNumericKey();
+  if(nkey){
+    lineupItems.push({title,path,icon,key:nkey,sid:sid||undefined});
+    saveLineup();
+    return;
+  }
+  openKeyPicker({title,path,icon,sid:sid||undefined});
+}
+function removeFromLineup(index){
+  if(index>=0&&index<lineupItems.length)lineupItems.splice(index,1);
+  compactLineupKeys(); // auto-adjust: punan ang butas, 2→1 ... A→9
+  saveLineup();
+}
+function clearAllLineup(){
+  const ev=activeEvent();
+  if(!ev){showToast('Wala pang event — gumawa muna gamit ang ➕ Add Event.','error');return;}
+  const name=ev.name;
+  lineupItems.length=0; // mutates the active event's items in place
+  saveLineup();
+  showToast('Pads cleared for "'+name+'".');
+}
+// ---- KEY ASSIGNMENT ----
+function keysInUse(){return new Set(lineupItems.map(i=>i.key));}
+function freeNumericKey(){
+  const used=keysInUse();
+  for(let n=1;n<=NUM_KEYS;n++)if(!used.has(String(n)))return String(n);
+  return null;
+}
+function freeLetterKey(){
+  const used=keysInUse();
+  for(let i=0;i<LETTER_KEYS.length;i++){
+    const c=LETTER_KEYS[i];
+    if(!used.has(c))return c;
+  }
+  return null;
+}
+function ensureLineupKeys(){
+  const used=new Set();
+  let n=1;let li=0;
+  lineupItems.forEach(it=>{
+    const k=it.key?String(it.key).toUpperCase():'';
+    if(k&&(/^[0-9]$/.test(k)||/^[A-Z]$/.test(k))&&!used.has(k)){used.add(k);return;}
+    while(n<=NUM_KEYS&&used.has(String(n)))n++;
+    if(n<=NUM_KEYS){it.key=String(n);used.add(it.key);n++;return;}
+    while(li<LETTER_KEYS.length&&used.has(LETTER_KEYS[li]))li++;
+    if(li<LETTER_KEYS.length){it.key=LETTER_KEYS[li];used.add(it.key);li++;return;}
+    it.key=null;
+  });
+}
+function compactLineupKeys(){
+  // AUTO-COMPACT: isara ang mga butas para laging siksik ang pads.
+  // Binura ang Key 1 → key 2 nagiging 1, key 3 → 2 ... at ang A nagiging 9.
+  // Para walang magulo — number keys 1-9 munang pupunuin, saka ang A-Z.
+  const base=[];
+  for(let n=1;n<=NUM_KEYS;n++)base.push(String(n));
+  for(let i=0;i<LETTER_KEYS.length;i++)base.push(LETTER_KEYS[i]);
+  const order=lineupItems
+    .map((it,i)=>({it,i}))
+    .sort((a,b)=>keyRank(a.it.key)-keyRank(b.it.key)||a.i-b.i);
+  order.forEach((o,pos)=>{o.it.key=(pos<base.length)?base[pos]:null;});
+}
+// ---- KEY PICKER (when keys 1–9 are all taken) ----
+let pendingAdd=null;
+let keyModal=document.getElementById('keyModal');
+function buildKeyGrid(){
+  const grid=document.getElementById('keyGrid');
+  if(!grid)return;
+  grid.innerHTML='';
+  const used=keysInUse();
+  for(let n=1;n<=NUM_KEYS;n++){
+    const t=String(n);
+    const b=document.createElement('button');
+    b.type='button';b.className='key-btn used';
+    b.textContent=t;b.disabled=true;
+    b.title='Key '+t+' is in use';
+    b.setAttribute('aria-label','Key '+t+' (in use)');
+    grid.appendChild(b);
+  }
+  const sep=document.createElement('div');
+  sep.className='grid-sep';sep.setAttribute('aria-hidden','true');
+  grid.appendChild(sep);
+  for(let i=0;i<LETTER_KEYS.length;i++){
+    const c=LETTER_KEYS[i];
+    const free=!used.has(c);
+    const b=document.createElement('button');
+    b.type='button';b.className='key-btn'+(free?' available':' used');
+    b.textContent=c;b.dataset.key=c;b.disabled=!free;
+    b.title=free?('Assign key '+c+' to this sound'):('Key '+c+' is in use');
+    b.setAttribute('aria-label',free?('Key '+c+' (free)'):('Key '+c+' (in use)'));
+    grid.appendChild(b);
+  }
+}
+function openKeyPicker(sound){
+  pendingAdd=sound||null;
+  if(!keyModal)return;
+  if(!freeLetterKey()){
+    showToast('All keys (1–9, A–Z) are in use. Remove a slot first.','error');
+    pendingAdd=null;
+    return;
+  }
+  const ico=document.getElementById('keyModalIco');
+  const name=document.getElementById('keyModalSound');
+  if(ico)ico.textContent=sound&&sound.icon?sound.icon:'🔊';
+  if(name)name.textContent=sound&&sound.title?sound.title:'Sound';
+  buildKeyGrid();
+  keyModal.hidden=false;
+  requestAnimationFrame(()=>keyModal.classList.add('open'));
+  const cancel=document.getElementById('keyCancel');
+  if(cancel)cancel.focus();
+}
+function closeKeyPicker(){
+  pendingAdd=null;
+  if(!keyModal)return;
+  keyModal.classList.remove('open');
+  setTimeout(()=>{
+    if(!keyModal.classList.contains('open'))keyModal.hidden=true;
+  },180);
+}
+function assignKeyToPending(key){
+  if(!pendingAdd)return;
+  const k=String(key).toUpperCase();
+  if(!/^[1-9]$|^[A-Z]$/.test(k))return;
+  if(keysInUse().has(k)){showToast('Key '+k+' is already in use. Pick another.','error');return;}
+  lineupItems.push({title:pendingAdd.title,path:pendingAdd.path,icon:pendingAdd.icon,key:k,sid:pendingAdd.sid||undefined});
+  saveLineup();
+  showToast((pendingAdd.title||'Sound')+' assigned to key '+k,'success');
+  closeKeyPicker();
+}
+// ---- LINE-UP RENDERER (keypad cards, FIXED pads 1-9) ----
+let lineupEls=[];
+function keyRank(k){
+  if(!k)return 999;
+  const c=String(k).toUpperCase();
+  if(/^[1-9]$/.test(c))return c.charCodeAt(0)-48;
+  if(/^[A-Z]$/.test(c))return 10+(c.charCodeAt(0)-65);
+  return 999;
+}
+function makeKeyCard(item,realIdx){
+  const card=document.createElement('div');
+  card.className='key-card';
+  card.dataset.path=resolveItemPath(item);
+  card.dataset.title=item.title||'';
+  card.dataset.index=realIdx;
+  card.draggable=true;
+  card.tabIndex=0;
+  card.setAttribute('role','button');
+  card.setAttribute('aria-label','Play '+(item.title||'queued sound')+(item.key?' (key '+item.key+')':'')+'. Drag to another pad to move this sound there.');
+  if(item.key){
+    const kb=document.createElement('span');
+    kb.className='key-number';
+    kb.textContent=item.key;
+    kb.title='Key '+item.key;
+    card.appendChild(kb);
+  }
+  const rm=document.createElement('span');
+  rm.className='rm';
+  rm.textContent='✕';
+  rm.dataset.index=realIdx;
+  rm.tabIndex=0;
+  rm.setAttribute('role','button');
+  rm.setAttribute('aria-label','Remove '+(item.title||'queued sound'));
+  const name=document.createElement('div');
+  name.className='sound-name';
+  name.textContent=(item.icon?item.icon+' ':'')+(item.title||'');
+  const bars=document.createElement('div');
+  bars.className='wave-bars';bars.setAttribute('aria-hidden','true');
+  waveFor(item.title).forEach(h=>{
+    const bar=document.createElement('div');
+    bar.className='bar';bar.style.height=h+'%';
+    bars.appendChild(bar);
+  });
+  card.append(rm,name,bars);
+  return card;
+}
+function makeEmptyPad(t){
+  const card=document.createElement('div');
+  card.className='key-card empty';card.setAttribute('aria-hidden','true');
+  card.dataset.key=t;
+  const num=document.createElement('span');
+  num.className='key-number';num.textContent=t;
+  const label=document.createElement('div');
+  label.className='empty-slot-name';label.textContent='＋ Empty';
+  card.append(num,label);
+  return card;
+}
+function renderLineup(){
+  const container=document.getElementById('lineupContainer');
+  const badge=document.getElementById('lineupCount');
+  if(badge)badge.textContent=lineupItems.length;
+  if(!container)return;
+  container.innerHTML='';
+  lineupEls=[];
+  // Sort a view of the queue by key so PADS STAY IN FIXED POSITIONS:
+  // pad 1 is always the first slot, pad 9 always the 9th — only sounds move.
+  const order=lineupItems
+    .map((it,i)=>({it,i}))
+    .sort((a,b)=>keyRank(a.it.key)-keyRank(b.it.key)||a.i-b.i);
+  const byKey=new Map();
+  order.forEach(o=>{if(o.it.key)byKey.set(String(o.it.key).toUpperCase(),o);});
+  // Numeric pads 1-9: always rendered in order, empty placeholder if key is free
+  for(let n=1;n<=NUM_KEYS;n++){
+    const t=String(n);
+    const found=byKey.get(t);
+    if(found){
+      const card=makeKeyCard(found.it,found.i);
+      lineupEls[found.i]=card;
+      container.appendChild(card);
+    }else{
+      container.appendChild(makeEmptyPad(t));
+    }
+  }
+  // Letter-keyed (and unkeyed) sounds follow, in key order
+  order.forEach(o=>{
+    const k=String(o.it.key||'').toUpperCase();
+    if(/^[A-Z]$/.test(k)||!o.it.key){
+      const card=makeKeyCard(o.it,o.i);
+      lineupEls[o.i]=card;
+      container.appendChild(card);
+    }
+  });
+  updateLibKeyBadges();
+}
+// ---- LINE-UP DRAG & DROP (swap keys / move to empty slot) ----
+function initLineupDnd(){
+  const container=document.getElementById('lineupContainer');
+  if(!container)return;
+  let srcIndex=null;
+  const clearMarks=()=>{container.querySelectorAll('.drag-over,.dragging').forEach(c=>c.classList.remove('drag-over','dragging'));};
+  container.addEventListener('dragstart',e=>{
+    if(padsLocked){e.preventDefault();return;}
+    const card=e.target&&e.target.closest?e.target.closest('.key-card'):null;
+    if(!card||card.classList.contains('empty')){e.preventDefault();return;}
+    srcIndex=card.dataset.index!==undefined?+card.dataset.index:null;
+    card.classList.add('dragging');
+    if(e.dataTransfer){
+      e.dataTransfer.effectAllowed='move';
+      try{e.dataTransfer.setData('text/plain',String(srcIndex));}catch(err){}
+    }
+  });
+  container.addEventListener('dragend',()=>{clearMarks();srcIndex=null;});
+  container.addEventListener('dragover',e=>{
+    if(srcIndex===null)return;
+    const card=e.target&&e.target.closest?e.target.closest('.key-card'):null;
+    if(!card)return;
+    e.preventDefault();
+    if(e.dataTransfer)e.dataTransfer.dropEffect='move';
+    container.querySelectorAll('.drag-over').forEach(c=>{if(c!==card)c.classList.remove('drag-over');});
+    card.classList.add('drag-over');
+  });
+  container.addEventListener('dragleave',e=>{
+    const card=e.target&&e.target.closest?e.target.closest('.key-card'):null;
+    if(card)card.classList.remove('drag-over');
+  });
+  container.addEventListener('drop',e=>{
+    if(srcIndex===null)return;
+    e.preventDefault(); // iwas window-navigation kapag na-drop sa padding ng grid
+    const card=e.target&&e.target.closest?e.target.closest('.key-card'):null;
+    if(!card)return;
+    const src=lineupItems[srcIndex];
+    if(card.classList.contains('empty')){
+      // Move: place the dragged sound on this free numeric key
+      const k=card.dataset.key;
+      if(src&&k&&/^[1-9]$/.test(k)){
+        const oldKey=src.key;
+        src.key=k;
+        compactLineupKeys(); // auto-compact: isara ang gap na ginawa ng paglipat
+        saveLineup();
+        showToast('"'+(src.title||'Sound')+'" is now on key '+src.key+'.','success');
+      }
+    }else{
+      // Swap: exchange keys between the dragged pad and the target pad
+      const tgtIndex=card.dataset.index!==undefined?+card.dataset.index:null;
+      if(tgtIndex!==null&&tgtIndex!==srcIndex&&src&&lineupItems[tgtIndex]){
+        const tmp=lineupItems[tgtIndex].key;
+        lineupItems[tgtIndex].key=src.key;
+        src.key=tmp;
+        compactLineupKeys(); // auto-adjust (swap ay hindi nag-gagawa ng butas, pero para sigurado)
+        saveLineup();
+        showToast('"'+(src.title||'Sound')+'" is now on key '+(src.key||'—')+' · "'+(lineupItems[tgtIndex].title||'Sound')+'" on key '+(lineupItems[tgtIndex].key||'—'),'success');
+      }
+    }
+    clearMarks();
+    srcIndex=null;
+  });
+}
+// ---- SEARCH ----
+function filterSounds(){
+  const input=document.getElementById('searchInput');
+  if(!input)return;
+  const q=input.value.trim().toLowerCase();
+  let visible=0;
+  document.querySelectorAll('.list-item').forEach(item=>{
+    const name=(item.getAttribute('data-name')||'').toLowerCase();
+    const show=!q||name.includes(q);
+    item.style.display=show?'flex':'none';
+    if(show)visible++;
+  });
+  document.querySelectorAll('#sectionsWrap .section').forEach(sec=>{
+    const items=sec.querySelectorAll('.list-item');
+    let vis=0;
+    items.forEach(i=>{if(i.style.display!=='none')vis++;});
+    sec.style.display=(vis===0)?'none':'';
+  });
+  const none=document.getElementById('noResults');
+  if(!none)return;
+  if(visible===0&&q){
+    none.hidden=false;
+    none.innerHTML='<span aria-hidden="true">🔍</span>No sounds match “'+escapeHtml(q)+'”';
+  }else{
+    none.hidden=true;
+  }
+}
+// ---- EVENTS ----
+function toggleShortcuts(){
+  const panel=document.getElementById('shortcutPanel');
+  const btn=document.getElementById('shortcutBtn');
+  if(!panel)return;
+  const open=panel.classList.toggle('open');
+  panel.setAttribute('aria-hidden',open?'false':'true');
+  if(btn){btn.classList.toggle('active',open);btn.setAttribute('aria-expanded',open?'true':'false');}
+}
+function closeShortcuts(){
+  const panel=document.getElementById('shortcutPanel');
+  const btn=document.getElementById('shortcutBtn');
+  if(!panel)return;
+  panel.classList.remove('open');
+  panel.setAttribute('aria-hidden','true');
+  if(btn){btn.classList.remove('active');btn.setAttribute('aria-expanded','false');}
+}
+document.addEventListener('click',(e)=>{
+  if(keyModal&&!keyModal.hidden){
+    const kb=e.target&&e.target.closest?e.target.closest('.key-btn'):null;
+    if(kb){assignKeyToPending(kb.textContent);return;}
+    const cb=e.target&&e.target.closest?e.target.closest('#keyCancel'):null;
+    if(cb){closeKeyPicker();return;}
+    return;
+  }
+  const av=document.getElementById('addSoundModal');
+  if(av&&!av.hidden){
+    const catB=e.target&&e.target.closest?e.target.closest('.cat-btn'):null;
+    if(catB){
+      if(catB.classList.contains('new'))startNewCat();
+      else commitSound(catB.dataset.cat);
+      return;
+    }
+    if(e.target&&e.target.closest&&e.target.closest('#newCatAddBtn')){commitNewCat();return;}
+    if(e.target&&e.target.closest&&e.target.closest('#addSoundCancel')){closeAddSoundModal();return;}
+    return;
+  }
+  if(eventModal&&!eventModal.hidden){
+    if(e.target&&e.target.closest&&e.target.closest('#eventModalSave')){commitEventModal();return;}
+    if(e.target&&e.target.closest&&e.target.closest('#eventModalCancel')){closeEventModal();return;}
+    return;
+  }
+  if(soundDeleteModalEl&&!soundDeleteModalEl.hidden){
+    if(e.target&&e.target.closest&&e.target.closest('#soundDeleteConfirm')){confirmDeleteCustomSound();return;}
+    if(e.target&&e.target.closest&&e.target.closest('#soundDeleteCancel')){closeSoundDeleteModal();return;}
+    return;
+  }
+  if(catDeleteModalEl&&!catDeleteModalEl.hidden){
+    if(e.target&&e.target.closest&&e.target.closest('#catDeleteConfirm')){confirmDeleteCategory();return;}
+    if(e.target&&e.target.closest&&e.target.closest('#catDeleteCancel')){closeCatDeleteModal();return;}
+    return;
+  }
+  if(eventDeleteModalEl&&!eventDeleteModalEl.hidden){
+    if(e.target&&e.target.closest&&e.target.closest('#eventDeleteConfirm')){confirmDeleteEvent();return;}
+    if(e.target&&e.target.closest&&e.target.closest('#eventDeleteCancel')){closeEventDeleteModal();return;}
+    return;
+  }
+  if(e.target&&e.target.closest&&e.target.closest('#addEventBtn')){openEventModal('create');return;}
+  if(e.target&&e.target.closest&&e.target.closest('#eventRenameBtn')){renameActiveEvent();return;}
+  if(e.target&&e.target.closest&&e.target.closest('#eventDeleteBtn')){deleteActiveEvent();return;}
+  const kbBtn=document.getElementById('shortcutBtn');
+  if(kbBtn&&kbBtn.contains(e.target)){toggleShortcuts();return;}
+  if(e.target&&e.target.closest&&e.target.closest('#shortcutPanel'))return;
+  const asBtn=e.target&&e.target.closest?e.target.closest('#addSoundBtn'):null;
+  if(asBtn){const fi=document.getElementById('soundFileInput');if(fi)fi.click();return;}
+  const lockBtn=e.target&&e.target.closest?e.target.closest('#lockBtn'):null;
+  if(lockBtn){setPadsLocked(!padsLocked);return;}
+  const libTgl=e.target&&e.target.closest?e.target.closest('#libHandleBtn'):null;
+  if(libTgl){setLibHidden(!libHidden);return;}
+  const rgbTgl=e.target&&e.target.closest?e.target.closest('#rgbToggleBtn'):null;
+  if(rgbTgl){setRgbOn(!rgbOn);return;}
+  const add=e.target&&e.target.closest?e.target.closest('.add-btn'):null;
+  if(add){
+    const item=add.closest('.list-item');
+    if(item)addToLineup(item.dataset.title,item.dataset.path,(item.querySelector('.item-ico')||{}).textContent||'🎵',item.dataset.sid);
+    return;
+  }
+  const prm=e.target&&e.target.closest?e.target.closest('.pad-rm'):null;
+  if(prm){e.stopPropagation();deleteCustomSound(prm.dataset.sid);return;}
+  const rm=e.target&&e.target.closest?e.target.closest('.rm'):null;
+  if(rm){removeFromLineup(+rm.dataset.index);return;}
+  const card=e.target&&e.target.closest?e.target.closest('.key-card'):null;
+  if(card&&!card.classList.contains('empty')&&!padsLocked){const pIdx=card.dataset.index!==undefined?+card.dataset.index:-1;playSound(resolveItemPath(lineupItems[pIdx])||card.dataset.path,card);return;}
+  const catRm=e.target&&e.target.closest?e.target.closest('.tag-rm'):null;
+  if(catRm){e.stopPropagation();openCatDeleteModal(catRm.dataset.cat);return;}
+  const tag=e.target&&e.target.closest?e.target.closest('.tag'):null;
+  if(tag){selectTab(tag);return;}
+  const item=e.target&&e.target.closest?e.target.closest('.list-item'):null;
+  if(item){playSound(item.dataset.path,item);return;}
+  closeShortcuts();
+});
+window.addEventListener('keydown',(e)=>{
+  const active=document.activeElement;
+  const inField=active&&(active.tagName==='INPUT'||active.tagName==='TEXTAREA'||active.isContentEditable);
+  const item=active&&active.closest?active.closest('.list-item'):null;
+  const card=active&&active.closest?active.closest('.key-card'):null;
+  if(keyModal&&!keyModal.hidden){
+    if(e.code==='Escape'){e.preventDefault();closeKeyPicker();return;}
+    if(e.ctrlKey||e.metaKey||e.altKey)return;
+    if(e.code==='Enter'||e.code==='Space'){
+      e.preventDefault();
+      const f=active;
+      if(f&&f.closest){
+        const kbtn=f.closest('.key-btn');
+        if(kbtn&&!kbtn.disabled){assignKeyToPending(kbtn.textContent);return;}
+        if(f.closest('#keyCancel')){closeKeyPicker();return;}
+      }
+      return;
+    }
+    const kch=String(e.key);
+    const ku=kch.toUpperCase();
+    if(/^[A-Z]$/.test(ku)||/^[1-9]$/.test(kch)){
+      e.preventDefault();
+      assignKeyToPending(ku);
+      return;
+    }
+    e.preventDefault();
+    return;
+  }
+  if(eventModal&&!eventModal.hidden){
+    if(e.code==='Escape'){e.preventDefault();closeEventModal();return;}
+    if(e.code==='Enter'||e.code==='NumpadEnter'||e.key==='Enter'){e.preventDefault();commitEventModal();return;}
+    return; // let normal typing into the input
+  }
+  if(soundDeleteModalEl&&!soundDeleteModalEl.hidden){
+    if(e.code==='Escape'){e.preventDefault();flashSoundDeleteKey('cancel');return;}
+    if(e.code==='Enter'||e.code==='NumpadEnter'||e.key==='Enter'){
+      // Enter always deletes — matching the kbd hint on the Delete button
+      e.preventDefault();
+      flashSoundDeleteKey('confirm');
+      return;
+    }
+    return;
+  }
+  if(eventDeleteModalEl&&!eventDeleteModalEl.hidden){
+    if(e.code==='Escape'){e.preventDefault();flashDeleteKey('cancel');return;}
+    if(e.code==='Enter'||e.code==='NumpadEnter'||e.key==='Enter'){
+      // Enter always deletes — matching the kbd hint on the Delete button
+      e.preventDefault();
+      flashDeleteKey('confirm');
+      return;
+    }
+    return;
+  }
+  if(catDeleteModalEl&&!catDeleteModalEl.hidden){
+    if(e.code==='Escape'){e.preventDefault();flashCatDeleteKey('cancel');return;}
+    if(e.code==='Enter'||e.code==='NumpadEnter'||e.key==='Enter'){
+      // Enter always deletes — matching the kbd hint on the Delete button
+      e.preventDefault();
+      flashCatDeleteKey('confirm');
+      return;
+    }
+    return;
+  }
+  const asModal=document.getElementById('addSoundModal');
+  if(asModal&&!asModal.hidden){
+    if(e.code==='Escape'){e.preventDefault();closeAddSoundModal();return;}
+    if(e.code==='Enter'){
+      e.preventDefault();
+      const row=document.getElementById('newCatRow');
+      if(row&&!row.hidden)commitNewCat();
+      return;
+    }
+    return; // let normal typing into the name/category inputs
+  }
+  if(e.code==='Space'){
+    // Always stop all sounds — except while typing in the search box.
+    if(inField)return;
+    e.preventDefault();
+    stopAllSounds();
+    return;
+  }
+  if(inField)return;
+  if((e.ctrlKey||e.metaKey)&&String(e.key).toLowerCase()==='f'){
+    e.preventDefault();
+    const si=document.getElementById('searchInput');
+    if(si){si.focus();si.select();}
+    return;
+  }
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  if(e.key==='/'){
+    e.preventDefault();
+    const si2=document.getElementById('searchInput');
+    if(si2){si2.focus();si2.select();}
+    return;
+  }
+  if(e.code==='Escape'){closeShortcuts();return;}
+  if(e.code==='Enter'){
+    const rm=active&&active.closest?active.closest('.rm'):null;
+    if(rm){e.preventDefault();removeFromLineup(+rm.dataset.index);return;}
+    if(card&&!card.classList.contains('empty')&&!padsLocked){e.preventDefault();const pIdx=card.dataset.index!==undefined?+card.dataset.index:-1;playSound(resolveItemPath(lineupItems[pIdx])||card.dataset.path,card);return;}
+    if(!item)return;
+    if(active&&active.closest('.add-btn'))return;
+    e.preventDefault();playSound(item.dataset.path,item);return;
+  }
+  const kch=String(e.key);
+  const ku=kch.toUpperCase();
+  if(/^[1-9]$/.test(kch)||(/^[A-Z]$/.test(ku)&&kch.length===1)){
+    if(padsLocked)return; // pads locked — keyboard play disabled (add flow sa key picker pa rin gumagana)
+    const idx=lineupItems.findIndex(i=>i.key===ku);
+    if(idx>-1&&lineupEls[idx])playSound(resolveItemPath(lineupItems[idx]),lineupEls[idx]);
+  }
+});
+function initVolume(){
+  const slider=document.getElementById('volume');
+  if(!slider)return;
+  slider.value=String(volumeLevel);
+  slider.title=Math.round(volumeLevel*100)+'%';
+  slider.addEventListener('input',()=>{
+    volumeLevel=parseFloat(slider.value);
+    if(isNaN(volumeLevel))volumeLevel=0;
+    slider.title=Math.round(volumeLevel*100)+'%';
+    activeAudios.forEach(a=>{a.volume=volumeLevel;});
+    const icon=document.querySelector('.vol-ico');
+    if(icon)icon.textContent=volumeLevel===0?'🔇':volumeLevel<0.5?'🔉':'🔊';
+    try{localStorage.setItem(volumeKey,String(volumeLevel));}catch(err){}
+  });
+}
+// ---- LOCK PADS (iwas accidental play) ----
+const padsLockedKey='soundboard_pads_locked';
+let padsLocked=false;
+// ---- LIBRARY COLLAPSE (slide pa-right — maximize pads) ----
+const libHiddenKey='soundboard_lib_hidden';
+let libHidden=false;
+try{libHidden=localStorage.getItem(libHiddenKey)==='1';}catch(err){libHidden=false;}
+function setLibHidden(v,silent){
+  const changed=(!!v)!==libHidden;
+  libHidden=!!v;
+  try{localStorage.setItem(libHiddenKey,libHidden?'1':'0');}catch(err){}
+  if(changed&&!silent&&!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)){
+    animateLibCollapse();
+  }else{
+    finishLibCollapse();
+  }
+  const btn=document.getElementById('libHandleBtn');
+  if(btn){
+    btn.setAttribute('aria-pressed',libHidden?'true':'false');
+    btn.setAttribute('aria-label',libHidden?'Show Sound Library':'Hide Sound Library');
+    btn.title=libHidden?'Ibalik ang Sound Library':'Itago ang Sound Library (slide pa-right)';
+  }
+  if(!silent)showToast(libHidden?'Library hidden — PADS MAXIMIZED 🎛️':'Library shown.','success');
+}
+let cacheLibW=340;
+let libAnimRaf=null;
+function finishLibCollapse(){
+  if(libAnimRaf){cancelAnimationFrame(libAnimRaf);libAnimRaf=null;}
+  const appEl=document.querySelector('.app');
+  const btn=document.getElementById('libHandleBtn');
+  if(appEl){
+    appEl.classList.toggle('lib-hidden',libHidden);
+    appEl.style.gridTemplateColumns='';
+  }
+  if(btn){btn.style.left='';btn.style.top='';}
+  positionLibHandle();
+}
+function animateLibCollapse(){
+  const appEl=document.querySelector('.app');
+  const btn=document.getElementById('libHandleBtn');
+  const lib=document.querySelector('.library-section');
+  const line=document.querySelector('.lineup-section');
+  if(!appEl||!btn||!lib||!line){finishLibCollapse();return;}
+  if(libAnimRaf){cancelAnimationFrame(libAnimRaf);libAnimRaf=null;}
+  // Sukatin ang startW BAGO alisin ang class (kapag nakatago = 0px, kapag kita = buong width)
+  const startW=lib.getBoundingClientRect().width;
+  const endW=libHidden?0:(cacheLibW||Math.max(startW,340));
+  const aR=appEl.getBoundingClientRect();
+  const lR=line.getBoundingClientRect();
+  const cy=lR.top+lR.height/2-aR.top;
+  const dur=360;
+  // Alisin ang class habang nag-a-animate para HINDI mag-ooverride ang CSS
+  appEl.classList.remove('lib-hidden');
+  const t0=performance.now();
+  function frame(now){
+    const p=Math.min(1,(now-t0)/dur);
+    const e=1-Math.pow(1-p,3); // easeOutCubic
+    const w=Math.max(startW+(endW-startW)*e,1);
+    appEl.style.gridTemplateColumns='minmax(0,1.6fr) minmax(0,'+w+'px)';
+    // Basahin ANG TOTOONG border ng library pagkatapos ng layout — siguradong dikit ang arrow
+    const bR=lib.getBoundingClientRect();
+    btn.style.left=(bR.left-aR.left)+'px';
+    btn.style.top=cy+'px';
+    if(p>=1){
+      libAnimRaf=null;
+      finishLibCollapse();
+    }else{
+      libAnimRaf=requestAnimationFrame(frame);
+    }
+  }
+  libAnimRaf=requestAnimationFrame(frame);
+}
+function positionLibHandle(){
+  const btn=document.getElementById('libHandleBtn');
+  const appEl=document.querySelector('.app');
+  const line=document.querySelector('.lineup-section');
+  const lib=document.querySelector('.library-section');
+  if(!btn||!appEl||!line)return;
+  const aR=appEl.getBoundingClientRect();
+  const lR=line.getBoundingClientRect();
+  const cy=lR.top+lR.height/2-aR.top;
+  const hw=Math.min(btn.getBoundingClientRect().width,40)/2;
+  if(libHidden){
+    btn.style.left=(aR.width-hw)+'px';
+  }else if(lib){
+    const bR=lib.getBoundingClientRect();
+    cacheLibW=bR.width;
+    btn.style.left=(bR.left-aR.left)+'px';
+  }
+  btn.style.top=cy+'px';
+}
+// ---- RGB NEON ON/OFF ----
+const rgbOnKey='soundboard_rgb_on';
+let rgbOn=true;
+try{rgbOn=localStorage.getItem(rgbOnKey)!=='0';}catch(err){rgbOn=true;}
+function setRgbOn(v,silent){
+  rgbOn=!!v;
+  try{localStorage.setItem(rgbOnKey,rgbOn?'1':'0');}catch(err){}
+  const appEl=document.querySelector('.app');
+  if(appEl)appEl.classList.toggle('rgb-off',!rgbOn);
+  const btn=document.getElementById('rgbToggleBtn');
+  if(btn){
+    btn.classList.toggle('on',rgbOn);
+    btn.classList.toggle('off',!rgbOn);
+    btn.setAttribute('aria-pressed',rgbOn?'true':'false');
+    btn.title='RGB neon lights — '+(rgbOn?'ON':'OFF');
+  }
+  if(!silent)showToast(rgbOn?'🌈 RGB neon ON — labas ang ganda!':'RGB neon OFF — plain dark mode.','success');
+}
+try{padsLocked=localStorage.getItem(padsLockedKey)==='1';}catch(err){padsLocked=false;}
+function setPadsLocked(v,silent){
+  padsLocked=!!v;
+  try{localStorage.setItem(padsLockedKey,padsLocked?'1':'0');}catch(err){}
+  const btn=document.getElementById('lockBtn');
+  if(btn){
+    btn.textContent=padsLocked?'🔒':'🔓';
+    btn.classList.toggle('locked',padsLocked);
+    btn.setAttribute('aria-pressed',padsLocked?'true':'false');
+    btn.title=padsLocked?'Pads LOCKED — pindutin ulit para i-unlock':'Lock pads (proteksyon laban sa accidental play)';
+  }
+  const grid=document.getElementById('lineupContainer');
+  if(grid)grid.classList.toggle('locked',padsLocked);
+  if(!silent)showToast(padsLocked?'Pads LOCKED 🔒 — library at add flow pa rin gumagana.':'Pads UNLOCKED 🔓 — pwede nang mag-play sa pads.');
+}
+// ---- INIT ----
+buildTabs();
+buildSections();
+initVolume();
+buildKeyGrid();
+initLineupDnd();
+setPadsLocked(padsLocked,true); // restore lock state without toast
+setLibHidden(libHidden,true); // restore library collapse state without toast
+positionLibHandle();
+window.addEventListener('resize',positionLibHandle);
+setRgbOn(rgbOn,true); // restore RGB state without toast
+loadCustomSounds();
+const brandSub=document.getElementById('brandSub');
+if(brandSub)brandSub.textContent=allSoundCount()+' sounds loaded · v'+APP_VERSION;
+document.getElementById('searchInput').addEventListener('input',filterSounds);
+// ---- SEARCH CLEAR BUTTON ----
+const searchBox=document.getElementById('searchInput');
+const searchClear=document.getElementById('searchClear');
+function syncSearchClear(){if(searchClear)searchClear.hidden=!(searchBox&&searchBox.value);}
+if(searchClear)searchClear.addEventListener('click',()=>{
+  if(searchBox){searchBox.value='';filterSounds();searchBox.focus();}
+  syncSearchClear();
+});
+if(searchBox)searchBox.addEventListener('input',syncSearchClear);
+syncSearchClear();
+document.getElementById('stopBtn').addEventListener('click',stopAllSounds);
+document.getElementById('clearBtn').addEventListener('click',clearAllLineup);
+const soundFileInput=document.getElementById('soundFileInput');
+if(soundFileInput)soundFileInput.addEventListener('change',()=>{
+  const f=soundFileInput.files&&soundFileInput.files[0];
+  soundFileInput.value='';
+  if(!f)return;
+  if(f.type&&!/^audio\//.test(f.type)&&!/\.mp3$/i.test(f.name)){
+    showToast('Please choose an MP3 audio file.','error');
+    return;
+  }
+  openAddSoundModal(f);
+});
+loadEventState();
+renderEventBar();
+ensureLineupKeys();
+compactLineupKeys();
+saveEvents();
+renderLineup();
+const evSelect=document.getElementById('eventSelect');
+if(evSelect)evSelect.addEventListener('change',()=>switchEvent(evSelect.value));
+</script>
+</body>
+</html>
