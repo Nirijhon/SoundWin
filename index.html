@@ -166,20 +166,12 @@ button{font-family:inherit}
 .app.rgb-off .lineup-section{animation:none;background:linear-gradient(180deg,#10161f,#0d1117) padding-box,linear-gradient(90deg,var(--border-color)) border-box;box-shadow:none}
 .app.rgb-off .lineup-section::before{animation:none;opacity:0}
 .app.rgb-off .key-card.empty{animation:none;opacity:.55;border-color:var(--border-color);box-shadow:none}
-/* ---- PER-PAD VOLUME SLIDER (vertical, on side of tile) ---- */
-.key-card .pad-vol{
-  position:absolute;
-  right:4px; top:50%;
-  width:78px; height:4px;
-  transform:translateY(-50%) rotate(-90deg);
-  transform-origin:center center;
-  -webkit-appearance:none; appearance:none;
-  background:var(--border-color); border-radius:999px;
-  outline:none; cursor:pointer; margin:0; z-index:6;
-  opacity:.85; transition:opacity .15s;
-}
-.key-card:hover .pad-vol{opacity:1}
-.key-card .pad-vol::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:12px;height:12px;border-radius:50%;background:var(--accent);border:none;box-shadow:0 0 6px rgba(0,242,254,.5);cursor:pointer;transition:transform .15s}
+/* ---- PER-PAD VOLUME OVERLAY (right-click a tile) ---- */
+.key-card .vol-overlay{position:absolute;inset:0;z-index:8;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:14px;background:rgba(8,12,18,.88);border-radius:inherit;backdrop-filter:blur(3px);cursor:default}
+.key-card.vol-open .vol-overlay{display:flex}
+.key-card .vol-overlay .vol-label{font-size:.8rem;font-weight:700;color:var(--accent);letter-spacing:.04em}
+.key-card .pad-vol{position:static;display:block;width:80%;height:6px;-webkit-appearance:none;appearance:none;background:var(--border-color);border-radius:999px;outline:none;cursor:pointer;margin:0}
+.key-card .pad-vol::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);border:none;box-shadow:0 0 6px rgba(0,242,254,.5);cursor:pointer;transition:transform .15s}
 .key-card .pad-vol::-webkit-slider-thumb:hover{transform:scale(1.15)}
 .key-card .pad-vol::-moz-range-track{height:4px;border-radius:999px;background:var(--border-color)}
 .key-card .pad-vol::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--accent);border:none;box-shadow:0 0 6px rgba(0,242,254,.5);cursor:pointer}
@@ -1662,6 +1654,15 @@ function keyRank(k){
   if(/^[A-Z]$/.test(c))return 10+(c.charCodeAt(0)-65);
   return 999;
 }
+function closeVolOverlays(except){
+  document.querySelectorAll('.key-card.vol-open').forEach(c=>{if(c!==except)c.classList.remove('vol-open');});
+}
+document.addEventListener('mousedown',(e)=>{
+  if(e.button===2)return;
+  if(e.target&&e.target.closest&&e.target.closest('.vol-overlay'))return;
+  closeVolOverlays(null);
+},true);
+document.addEventListener('keydown',(e)=>{if(e.key==='Escape')closeVolOverlays(null);},true);
 function makeKeyCard(item,realIdx){
   const card=document.createElement('div');
   card.className='key-card';
@@ -1724,7 +1725,21 @@ function makeKeyCard(item,realIdx){
     });
     try{saveEvents();}catch(err){}
   });
-  card.append(rm,name,bars,vol);
+  const ov=document.createElement('div');
+  ov.className='vol-overlay';
+  const lab=document.createElement('div');
+  lab.className='vol-label';
+  lab.textContent='🔊 '+Math.round(padVol*100)+'%';
+  vol.addEventListener('input',()=>{lab.textContent='🔊 '+Math.round(parseFloat(vol.value)*100)+'%';});
+  ['click','pointerdown','mousedown','dblclick','contextmenu'].forEach(t=>ov.addEventListener(t,(e)=>{e.stopPropagation();if(t==='contextmenu')e.preventDefault();}));
+  ov.addEventListener('dragstart',(e)=>{e.preventDefault();e.stopPropagation();});
+  ov.append(lab,vol);
+  card.addEventListener('contextmenu',(e)=>{
+    e.preventDefault();e.stopPropagation();
+    closeVolOverlays(card);
+    card.classList.toggle('vol-open');
+  });
+  card.append(rm,name,bars,ov);
   return card;
 }
 function makeEmptyPad(t){
