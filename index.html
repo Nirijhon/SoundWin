@@ -1731,7 +1731,8 @@ function makeKeyCard(item,realIdx){
   lab.className='vol-label';
   lab.textContent='🔊 '+Math.round(padVol*100)+'%';
   vol.addEventListener('input',()=>{lab.textContent='🔊 '+Math.round(parseFloat(vol.value)*100)+'%';});
-  ['click','pointerdown','mousedown','dblclick','contextmenu'].forEach(t=>ov.addEventListener(t,(e)=>{e.stopPropagation();if(t==='contextmenu')e.preventDefault();}));
+  ['click','pointerdown','mousedown','dblclick'].forEach(t=>ov.addEventListener(t,(e)=>{e.stopPropagation();}));
+  ov.addEventListener('contextmenu',(e)=>{e.preventDefault();e.stopPropagation();card.classList.remove('vol-open');});
   ov.addEventListener('dragstart',(e)=>{e.preventDefault();e.stopPropagation();});
   ov.append(lab,vol);
   card.addEventListener('contextmenu',(e)=>{
